@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: node.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: node.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import * as Hel from '../old/dabrHelper.js';
+
+/* Some JSDoc definitions. I am not satisfied with JSDoc but
+ * I am using it for now. Looking to change to something better */
+
+/*
+ * A proxy object representing a node. &lt;br>
+ * Get method: Almost default get method, but the 'target' property returns the entire object. &lt;br>
+ * Set method: Used indirectly everytime a node's property is set. Should be used only to set the 'val' or property, anything else generates an error.
+ * @example
+ * &lt;caption> Example of using get/set val &lt;/caption>
+ * const n = node(3); // n.val == 3, n.old == null
+ * n.val = 3; //does nothing because value does not change
+ * n.val = 5; //sets current value of the node to 5 (and runs transitions)
+ * n.val == 5 // true
+ * n.old == 3 // true
+ * @typedef {Proxy} Node
+ * @property {*} val - The current value inside the node
+ * @property {*} old - The previous node value before last change (starts as null)
+ * @property {Transition[]} trans - All transitions connected to the node
+ * @property {boolean} changed - Flags if a node has been changed or not (used internally to avoid infinite loops)
+ * @property {boolean} isNode - Always true
+ * @property {string} name - Node name for identification purposes
+ */
+
+/**
+ * Creates a Node proxy with a value and node options (both optional). If no value is given, the default is null and if no options are given, the default is {}. &lt;br>
+ * The info parameter can be any object, containing any auxiliary information (i.e., containing node identification, specifying the type of node, etc).
+ * @function node
+ * @param {*} [value=null] - Initial node value
+ * @param {Object} [info={}] exponent - Arbitrary information about the node
+ * @return {Node} - The node proxy object result
+ */
+
+/* Main function to creates a node */
+const node = (val, info) => {
+    if (!info) info = {};
+    if (!val &amp;&amp; val != '') val = null;
+
+    const obj = {
+        val: val,
+        old: null,
+        trans: [],
+        changed: false,
+        isNode: true,
+        info: info
+    };
+
+    const handler = {
+        get,
+        set
+    };
+
+    return new Proxy(obj, handler);
+};
+
+/* Almost default get method, but the 'target'
+ * property returns the entire object */
+const get = (target, prop) => {
+    if (prop == 'target') {
+        return target;
+    }
+    return target[prop];
+};
+
+/* Proxy handler SET function, used indirectly everytime a
+ * node's property is set (e.g., node.val = newValue) */
+const set = (target, prop, value) => {
+    if (prop == 'val') {
+        // *D1 - Hel.isEqual é necessário?
+        if (!target.changed &amp;&amp; !Hel.isEqual(target.val, value)) {
+            target.old = target.val;
+            target.val = value;
+            /* Prevents infinite loops.
+             * Assumes the network stabilizes in 1 run.
+             * This part is abscent in "unsafeSetNode" */
+            target.changed = true;
+            target.trans.forEach(f => {
+                f.func();
+            });
+            target.changed = false;
+        }
+        return true;
+    } else if (prop == 'target') {
+        target = value;
+        return true;
+    }
+    return false;
+};
+
+const removeTran = (node, tag) => {
+    const target = node.target;
+
+    //console.log('pogo', node, tag, target.trans.length);
+
+    target.trans = target.trans.filter(tran => tran.tag != tag);
+
+    //console.log('pogu', node, tag, target.trans.length);
+};
+
+const tran = (inputs, func, tag) => {
+    const transition = {
+        inputs,
+        func,
+        tag
+    };
+
+    inputs.forEach(inp => {
+        if (tag == undefined) {
+            inp.target.trans.push(transition);
+        } else {
+            const res = inp.target.trans.find(
+                t => t.tag == transition.tag
+            );
+            if (!res) inp.target.trans.push(transition);
+        }
+    });
+
+    const allNotNull = inputs
+        .map(inp => Hel.isNotNull(inp.val))
+        .reduce((x, y) => x &amp;&amp; y, true);
+
+    if (allNotNull) {
+        func();
+    }
+
+    return transition;
+};
+
+const tag = info => ({
+    info
+});
+const getVarsFromDef = def => {
+    let vars = [];
+
+    getVarsFromDefAux({
+        aux: def
+    });
+
+    return vars;
+
+    function getVarsFromDefAux(x) {
+        Hel.iterate(x, ([, val]) => {
+            if (!(val &amp;&amp; val.isRect)) {
+                if (val.isNode) {
+                    if (!vars.includes(val)) {
+                        vars.push(val);
+                    }
+                } else if (Hel.isObjOrArray(val)) {
+                    getVarsFromDefAux(val);
+                }
+            }
+        });
+    }
+};
+const toNode = def => {
+    if (Hel.isNull(def)) {
+        return node(def);
+    }
+
+    if (def.isNode) {
+        return def;
+    }
+
+    const vars = getVarsFromDef(def);
+
+    if (vars.length == 0) {
+        return node(def);
+    }
+
+    let f = obj => {
+        let out = {};
+
+        Object.entries(obj).forEach(([key, val]) => {
+            if (val.isNode) {
+                out[key] = val.val;
+            } else if (Hel.isObj(val)) {
+                let res = f(val);
+
+                if (res &amp;&amp; !Hel.isObjectEmpty(res)) {
+                    out[key] = res;
+                }
+            } else if (Hel.isArray(val)) {
+                let res = Hel.objToArray(f(val));
+                if (res &amp;&amp; !Hel.isEmpty(res)) {
+                    out[key] = res;
+                }
+            } else {
+                out[key] = val;
+            }
+        });
+
+        return out;
+    };
+
+    return tranNode(
+        vars,
+        () =>
+            f({
+                aux: def
+            }).aux
+    );
+};
+const tranNode = (nodes, func) => {
+    const auxNode = node();
+
+    tran(nodes, () => {
+        auxNode.val = func();
+    });
+
+    return auxNode;
+};
+
+window.toNode = toNode;
+
+export { node, tran, tag, toNode, tranNode, removeTran };
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#node">node</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Tue Mar 24 2020 16:26:22 GMT-0300 (Brasilia Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

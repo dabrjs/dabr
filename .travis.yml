@@ -1,0 +1,11 @@
+sudo: false
+language: node_js
+nodejs:
+  - 12
+cache: yarn
+script:
+  - yarn test
+after_success:
+  - yarn build
+  - yarn docs
+  - yarn run semantic-release

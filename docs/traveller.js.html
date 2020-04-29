@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: traveller.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: traveller.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/* SUMMARY OF CONCEPT
+
+This is a frontend framework based on rectangular blocks. Blocks have blocks inside them with relative positioning and the main, initial, block is defined in terms of the size of the screen of the device.
+
+Statically, blocks can have borders, they can have fixed proportions and they can have texts inside them. These options generate internally additional auxiliar blocks.
+
+Dinamically, each block can listen to a list of events. Once an event fires, it should fire many block events to each block that wants to listen to it. Block events are functions that take the information of the event (and possibilly the state of the block itself) and change variables. Variables are the way we define change within blocks.
+
+Each block can be defined by a value (like 5) or by a variable (like Var "x"). The initial state of a block initializes the initial values of all variables and events can change the value of the variables. Variables changing trigger state changes and DOM changes.
+
+*/ /* SUMMARY OF DEVELOPMENT
+
+Static Part:
+
+  -
+  -
+  -
+  -
+
+Dynamic Part:
+
+  - DONE Defining initial State (initial variables)*
+    - DONE Evaluation of variables (still static variables for now)*
+    - DONE Finalizar essa parte completamente (Var, Val, initial state, etc)
+    - DONE Var também no state, além de no modelo
+
+  - TODO Events -> Block Events*
+    - DONE First only basic click*
+    - Secondly only resize, including main screen resize***
+    - Implementation of other events
+      - clickInside
+      - clickOnly
+      - keyboard
+      - http (and http action too)
+  - Block Events Mechanism*
+    - Changing variables from function defined by user*
+    - Function returning all changed variables*
+  - Variable changes -> Change object*
+    - For now only a simple non recursive change like color*
+    - Other changes:
+      - Change Children Input**
+      - Change Output**
+      - Change position (recursive)***
+      - Change size (recursive)***
+      - Add child
+      - Remove child
+      - Change scrollable
+      - Change border
+      - Change text
+      - Etc
+  - State changes from Change object
+    - For now only a simple non recursive change like color*
+    - Then other changes***
+  - DOM changes from Change object
+    - For now only a simple non recursive change like color*
+    - Then other changes***
+*/
+
+/* GLOBAL VARIABLES */
+let _globalState = {},
+    _vars = [];
+
+/* MAIN ENTRY */
+
+/**
+ * Represents a book.
+ * @constructor
+ * @param {string} title - The title of the book.
+ * @param {string} author - The author of the book.
+ */
+var traveller = model => {
+    time("state");
+
+    _globalState = initGlobalState(model);
+
+    timeEnd("state");
+
+    log(_globalState);
+
+    renderState(_globalState, null); // todo: should be init
+
+    addEventListeners(model);
+
+    // parte dinâmica
+    /*while (true) {
+
+        events = listenToEvents();
+        newVariables = runEvents(eventListeners, events)
+        [newState,changes] = replaceVariables(state,newVariables)
+        state = newState
+        renderChanges(changes)
+
+    }*/
+};
+
+/* STATE INITIALIZATION */
+var initGlobalState = mainBlock => {
+    // get device's size
+    let devSize = getDeviceSize();
+
+    let mainState = initBlockState({
+        name: "main",
+        position: coord([0, 0]),
+        size: devSize,
+        path: []
+    });
+
+    mainState.info.events = {
+        onResize: () => {}
+    };
+
+    let childrenStates = initChildrenStates(mainBlock.children, mainState, []);
+
+    mainState.children = childrenStates;
+
+    return mainState;
+};
+
+var makeState = (block_, fatherInfo, path) => {
+    let block = Val(block_, fatherInfo.origName),
+        name = block.name;
+
+    if (block.initialVars) {
+        addVars(name, block.initialVars);
+    }
+
+    let fPos = fatherInfo.position,
+        fSiz = fatherInfo.size,
+        bPos = coord(Val(block.position, name)),
+        bSiz = coord(Val(block.size, name));
+
+    if (fatherInfo.scrollable) {
+        fSiz = fatherInfo.scrollable;
+    }
+
+    let a = coord([fSiz.x / 100, fSiz.y / 100]),
+        size = coord([bSiz.x * a.x, bSiz.y * a.y]),
+        pos = coord([bPos.x * a.x + fPos.x, bPos.y * a.y + fPos.y]);
+
+    let state = initBlockState({
+        name: name,
+        position: pos,
+        size: size,
+        path: path
+    });
+
+    addModelInformation(state, block);
+
+    let needsInnerBlock =
+        !(block.border == null) ||
+        !(block.proportional == null) ||
+        !(block.text == null);
+
+    if (!needsInnerBlock) {
+        addAttributes(state, block, fSiz);
+
+        state.children = initChildrenStates(block.children, state, path);
+    } else {
+        let stateInner, offset, innerSize;
+
+        if (block.border) {
+            let border = Val(block.border, name),
+                bw = Val(border.width, name);
+
+            [offset, innerSize] = borderBlockSize(bw, size);
+
+            stateInner = initBlockState({
+                type: "auxiliar",
+                name: name,
+                position: addCoord(pos, offset),
+                size: innerSize,
+                path: path.concat(0)
+            });
+
+            state.info.color = Val(border.color, name);
+
+            addAttributes(stateInner, block, fSiz);
+        } else if (block.proportional) {
+            let prop = coord(Val(block.proportional, name));
+
+            [offset, innerSize] = proportionalSize(prop, size);
+
+            stateInner = initBlockState({
+                type: "auxiliar",
+                name: name,
+                position: addCoord(pos, offset),
+                size: innerSize,
+                path: path.concat(0)
+            });
+
+            addAttributes(stateInner, block, fSiz);
+        } else if (block.text) {
+            let defaultSize = 20,
+                prop = calculatePropFromText(
+                    Val(block.text, name),
+                    defaultSize
+                );
+
+            [offset, innerSize] = proportionalSize(prop, size);
+
+            stateInner = initBlockState({
+                type: "auxiliar",
+                name: name,
+                position: addCoord(pos, offset),
+                size: innerSize,
+                path: path.concat(0)
+            });
+
+            stateInner.info.text = calculateFontSize(
+                innerSize,
+                Val(block.text, name),
+                prop,
+                defaultSize
+            );
+
+            addAttributes(state, block, fSiz);
+        }
+
+        stateInner.children = initChildrenStates(
+            block.children,
+            stateInner,
+            path.concat(0)
+        );
+
+        state.children = [stateInner];
+    }
+
+    if (block_.var) {
+        changeVar(fatherInfo.origName, {
+            var: block_.var,
+            val: state,
+            father: fatherInfo.origName
+        });
+
+        // return Val_(block_.var, origName)
+        return {
+            var: block_.var,
+            val: state,
+            father: fatherInfo.origName
+        };
+    } else {
+        return state;
+    }
+};
+
+/* RENDERING */
+
+var renderState = state_ => {
+    let state = state_;
+
+    if (state_.var) {
+        state = Val(state_, state_.father);
+    }
+
+    let block = state.info,
+        origName = block.origName,
+        $Val = x => Val(x, origName),
+        innerBlocks = $Val(state.children),
+        name = block.name,
+        tag = initDOM(name);
+
+    tag.style["position"] = "absolute";
+
+    tag.style["left"] = block.position.x + "px";
+
+    tag.style["top"] = block.position.y + "px";
+
+    tag.style["width"] = block.size.x + "px";
+
+    tag.style["height"] = block.size.y + "px";
+
+    tag.style["background"] = $Val(block.color);
+
+    if (block.text) {
+        let text = $Val(block.text);
+
+        tag.style["font-family"] = $Val(text.family);
+        tag.style["font-size"] = $Val(text.size) + "px";
+        tag.style["color"] = $Val(text.color);
+
+        $Val(text.lines).forEach((line, i) => {
+            let textDiv = initDOM("text-" + i + "-" + name);
+            textDiv.appendChild(document.createTextNode(line));
+            tag.append(textDiv);
+        });
+    }
+
+    if (block.img) {
+        let imgTag = document.createElement("img");
+        imgTag.setAttribute("src", $Val(block.img));
+        imgTag.style["width"] = block.size.x + "px";
+        imgTag.style["height"] = block.size.y + "px";
+        tag.appendChild(imgTag);
+    }
+
+    innerBlocks.forEach(b => {
+        renderState(b);
+    });
+};
+
+/* AUXILIAR FUNCTIONS */
+
+var addCoord = (pos, off) => {
+    let vec = coord([0, 0]);
+    vec.x = pos.x + off.x;
+    vec.y = pos.y + off.y;
+    return vec;
+};
+
+var initDOM = id => {
+    let div = document.createElement("div");
+    div.setAttribute("id", id);
+    document.body.appendChild(div);
+    return div;
+};
+
+var getDeviceSize = () => {
+    let w = document.documentElement.clientWidth,
+        h = document.documentElement.clientHeight;
+
+    return coord([w, h]);
+};
+
+var initBlockState = val => {
+    let posfix = "";
+
+    if (val.type &amp;&amp; val.type != "normal") {
+        posfix = "_aux";
+    }
+
+    let state = {
+        info: {
+            id: getNewId(),
+
+            type: "normal",
+            name: val.name + posfix,
+            origName: val.name,
+
+            position: val.position,
+            size: normalize(val.size, val.name),
+            path: val.path
+        }
+    };
+
+    return state;
+};
+
+var addAttributes = (state, block, scrollSize) => {
+    extend(state.info, {
+        color: withDefault(Val_(block.color, block.name), "none"),
+        img: Val_(block.img),
+        events: withDefault(block.events, {})
+    });
+
+    if (block.scrollable) {
+        state.info.scrollable = scrollSize;
+    }
+};
+
+var addModelInformation = (state, block) => {
+    let name = block.name;
+
+    extend(state.info, {
+        model: {
+            position: Val_(block.position, name),
+            size: Val_(block.size, name),
+            proportional: Val_(block.proportional, name),
+            border: Val_(block.border, name),
+            text: Val_(block.text, name)
+        }
+    });
+};
+
+var addVars = (name, initialVars) => {
+    _vars.push({
+        name: name,
+        state: Object.entries(initialVars).map(ent => ({
+            var: ent[0],
+            val: ent[1]
+        }))
+    });
+};
+
+var initChildrenStates = (children, fatherState, path) => {
+    let name = fatherState.info.origName,
+        $Val_ = x => Val_(x, name);
+
+    if (children) {
+        return $Val_(children).map((block, i) =>
+            makeState($Val_(block), fatherState.info, path.concat(i))
+        );
+    } else {
+        return [];
+    }
+};
+
+var normalize = (c, name) => {
+    if (c.x &lt; 1) {
+        errorMsg("Size x of " + name + " smaller than 1.");
+
+        if (c.x &lt; 1 &amp;&amp; c.x > 0) {
+            c.x = 1;
+        } else if (c.x &lt; 1 &amp;&amp; c.x &lt; 0) {
+            c.x = 0;
+        }
+    }
+
+    if (c.y &lt; 1) {
+        errorMsg("Size y of " + name + " smaller than 1.");
+
+        if (c.y &lt; 1 &amp;&amp; c.y > 0) {
+            c.y = 1;
+        } else if (c.y &lt; 1 &amp;&amp; c.y &lt; 0) {
+            c.y = 0;
+        }
+    }
+
+    return c;
+};
+
+var calculateFontSize = (size, text, prop, defaultSize) => {
+    let fs;
+    if (prop.x > prop.y) {
+        fs = (defaultSize * size.x) / prop.x;
+    } else {
+        fs = (defaultSize * size.y) / prop.y;
+    }
+
+    // 6px seems to be the smallesT font-size possible
+    if (fs &lt; 6) {
+        errorMsg("Font-size of " + name + " smaller than 6px.");
+    }
+
+    let textResult = text;
+    textResult.size = fs;
+
+    return textResult;
+};
+
+var calculatePropFromText = (textObj, defaultSize) => {
+    let testDivName = i => name + "-test-" + i;
+
+    return coord(
+        textObj.lines
+            .map((line, i) => {
+                let testDiv = initDOM(testDivName(i));
+                testDiv.appendChild(document.createTextNode(line));
+
+                //todo: addStyle
+                testDiv.style["position"] = "absolute";
+                testDiv.style["font-family"] = textObj.family;
+                testDiv.style["font-size"] = defaultSize + "px";
+                testDiv.style["visibility"] = "hidden";
+                testDiv.style["white-space"] = "nowrap";
+
+                let [x, y] = [testDiv.offsetWidth, testDiv.offsetHeight];
+
+                removeDOM(testDiv);
+
+                return [x, y];
+            })
+            .reduce(
+                ([w, h], [x, y]) => {
+                    return [Math.max(w, x), h + y];
+                },
+                [0, 0]
+            )
+    );
+};
+
+var borderBlockSize = (bw, siz) => [
+    coord([bw, bw]),
+    addCoord(siz, coord([-2 * bw, -2 * bw]))
+];
+
+var proportionalSize = (prop, siz) => {
+    let w = siz.x,
+        h = siz.y,
+        s = coord([0, 0]),
+        offset = coord([0, 0]),
+        p = prop.x / prop.y;
+
+    if (prop.x > prop.y) {
+        s.x = w;
+        s.y = s.x / p;
+
+        if (s.y > h) {
+            s.y = h;
+            s.x = s.y * p;
+            offset.y = 0;
+            offset.x = (w - s.x) / 2;
+        } else {
+            offset.x = 0;
+            offset.y = (h - s.y) / 2;
+        }
+    } else {
+        w = siz.x;
+        h = siz.y;
+        s.y = h;
+        s.x = s.y * p;
+
+        if (s.x > w) {
+            s.x = w;
+            s.y = s.x / p;
+            offset.x = 0;
+            offset.y = (h - s.y) / 2;
+        } else {
+            offset.y = 0;
+            offset.x = (w - s.x) / 2;
+        }
+    }
+
+    return [offset, s];
+};
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="traveller.html">traveller</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Thu Mar 19 2020 19:56:52 GMT-0300 (Brasilia Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
