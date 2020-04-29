@@ -26,7 +26,7 @@ import {
 } from '../dist/dabr.js';
 import { randomColor } from '../src/utils/index.js';
 
-window.b = node({ color: randomColor(), width: 1 });
+window.b = node({ color: 'orange', width: 1 });
 
 const ba = border(window.b);
 
