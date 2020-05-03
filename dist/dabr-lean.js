@@ -198,6 +198,8 @@ const tran = (nodes, func) => {
             func();
         }
         return transition;
+    } else {
+        return null;
     }
 };
 

@@ -29,7 +29,7 @@
     "lint": "eslint --cache --fix",
     "test": "jest --collect-coverage src",
     "build": "rollup --config",
-    "commit": "git-cz",
+    "commit": "yarn build && git-cz",
     "lint-watch": "esw src rollup.config.js examples --fix -w --color",
     "test-watch": "jest --verbose --watch src",
     "watch": "npm-watch"
@@ -52,9 +52,7 @@
   },
   "lint-staged": {
     "src/*.js": [
-      "yarn test",
-      "yarn build",
-      "git add -A"
+      "yarn test"
     ]
   }
 }
