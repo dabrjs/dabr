@@ -1,4 +1,4 @@
-import { node } from '../src/node.js';
+import { node } from '../../node.js';
 
 describe('Node functionality', () => {
     it('SHOULD NOT CHANGE node value', () => {
