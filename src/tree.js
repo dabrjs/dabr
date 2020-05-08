@@ -1,4 +1,4 @@
-import { isArray, singleton } from './utils/index.js';
+import { isArray, isEqual, singleton } from './utils/index.js';
 import { node, tran, mapN, toNode } from './node.js';
 
 // A tree of anything in which every children are actually nodes (DABR
@@ -44,6 +44,19 @@ export const mapT = f => (tree, path = []) =>
                   chs.map((ch, i) => mapT(f)(ch, path.concat(i)))
               )
     );
+
+export const treePath = (tree, path) => {
+    let res = null;
+    walkT((t, p) => {
+        console.log('AAAAAAAAAAAAAAAAaaa', t, p);
+        if (isEqual(p, path)) {
+            res = t;
+        }
+    })(tree);
+    return res;
+};
+
+export const getFirst = tree => treePath(tree, []);
 
 // Similar to map but the output does not matter
 export const walkT = f => (tree, path = []) => {

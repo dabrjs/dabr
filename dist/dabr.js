@@ -315,6 +315,19 @@ const mapT = f => (tree, path = []) =>
               )
     );
 
+const treePath = (tree, path) => {
+    let res = null;
+    walkT((t, p) => {
+        console.log('AAAAAAAAAAAAAAAAaaa', t, p);
+        if (isEqual(p, path)) {
+            res = t;
+        }
+    })(tree);
+    return res;
+};
+
+const getFirst = tree => treePath(tree, []);
+
 // Similar to map but the output does not matter
 const walkT = f => (tree, path = []) => {
     f(tree.val, path);
@@ -577,6 +590,11 @@ const filterC = (chan, cond) =>
 // isSupp: check if rect is support (defined by transformations) or
 //   core (defined by the user)
 // isCore: opposite of isSupp
+// oldVersions: array containing older references to the same rect
+//   before being preserved by the preserveR function. This value
+//   is important for transformations relying on correct rect.inst
+//   values even after rect gets transformed by functions (and its
+//   object reference changes)
 // init: channel set to true when a rect is initialized
 // stop: channel set to true when a rect is initialized
 // created: node equal to true after rect is initialized and
@@ -613,8 +631,9 @@ const Rect = def => {
 
     const defaultRectAttrs = {
         isRect: true,
-        isCore: true,
         isSupp: false,
+        isCore: true,
+        oldVersions: [],
         init: chan(),
         stop: chan(),
         created: node(),
@@ -677,8 +696,10 @@ const preserveR = (rect, changes) => {
             }
         });
     }
-    aux.init = rect.init;
-    aux.created = rect.created;
+    aux.inst = null; //rect.inst;
+    aux.init = chan(); //rect.init;
+    aux.created = node(); //rect.created;
+    aux.oldVersions = rect.oldVersions.concat([rect]);
     return Rect(concatObj(rect, aux));
 };
 
@@ -1832,7 +1853,14 @@ const runInside = (rectT, parent) => {
         lay.posAbs,
         lay.sizAbs
     );
-    // Some lifetime nodes/channels triggered
+    // Trigger events for oldVersions as well. This way functions
+    // working with olderVersions of rects (before preserveR's) get
+    // the correct value of inst as well
+    rect.oldVersions.forEach(oldVersion => {
+        oldVersion.inst = rect.inst;
+        oldVersion.init.put = true;
+        oldVersion.created.val = true;
+    });
     rect.init.put = true;
     rect.created.val = true;
     // Adds trigger for children creation/removal (remember children
@@ -2407,4 +2435,67 @@ window.c = hashNode();
 
 //const keypressChannel = chan();
 
-export { Dummy, EXPONENTIAL, Entry, FLIP, LINEAR, QUADRATIC, Rect, RectT, Supp, SuppT, T, Tree, addChans, addNodes, addStyle, applyF, border, chan, chanL, cond, condElse, container, core, filterC, flatten, hashNode, keyed, listen, listenOnce, mapC, mapN, mapT, node, nodeT, preserveR, proportional, px, rel, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, safeMapN, safeNodeT, safeTran, scrollbar, stopTimed, supp, switcher, timed, toNode, top, tran, tree, walkT };
+const text = textNode => rect => {
+    listenOnce([rect.init], () => {
+        mapN(
+            [textNode],
+            ({
+                color = 'black',
+                size = '16px',
+                family,
+                align,
+                content
+            }) => {
+                rect.a = 19;
+                console.log('ayayayay', rect);
+                const elem = rect.inst.dom;
+                elem.style['color'] = color;
+                elem.style['font-size'] = size;
+                elem.style['text-align'] = 'center';
+                if (align) elem.style['text-align'] = align;
+                if (family) elem.style['font-family'] = family;
+                elem.innerText = content;
+            }
+        );
+    });
+    return rect;
+};
+
+const smooth = num =>
+    Math.round((num + Number.EPSILON) * 1000) / 1000 - 0.02;
+
+// parei aqui: a ordem das transitions deve ser arrumada
+
+const fitText = textN => rect => {
+    const prop = mapN(
+        [textN],
+        ({ color = 'black', family, align, content }) => {
+            const elem = document.createElement('div');
+            elem.style['visibility'] = 'hidden';
+            elem.style['width'] = 'max-content';
+            elem.style['font-size'] = '16px';
+            if (family) elem.style['font-family'] = family;
+            elem.innerText = content;
+            document.body.appendChild(elem);
+            const w = elem.offsetWidth;
+            const h = elem.offsetHeight;
+            console.log('heyyy', w, h);
+            elem.remove();
+            return [w, h];
+        }
+    );
+    const res = proportional(prop)(text(textN)(rect));
+    console.log('h', res, treePath(res, [0]), treePath(res, []));
+    const aux = treePath(res, [0]);
+    tran([aux.layout.sizAbs], () => {
+        const currentSizeX = aux.layout.sizAbs.val[0];
+        const size16pxX = prop.val[0];
+        const newSize = smooth((currentSizeX / size16pxX) * 16);
+        console.log('cccc', newSize);
+        textN.val = { ...textN.val, ...{ size: newSize + 'px' } };
+    });
+    console.log('res', res, treePath);
+    return res;
+};
+
+export { Dummy, EXPONENTIAL, Entry, FLIP, LINEAR, QUADRATIC, Rect, RectT, Supp, SuppT, T, Tree, addChans, addNodes, addStyle, applyF, border, chan, chanL, cond, condElse, container, core, filterC, fitText, flatten, getFirst, hashNode, keyed, listen, listenOnce, mapC, mapN, mapT, node, nodeT, preserveR, proportional, px, rel, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, safeMapN, safeNodeT, safeTran, scrollbar, stopTimed, supp, switcher, text, timed, toNode, top, tran, tree, treePath, walkT };

@@ -15,6 +15,11 @@ import { chan } from './channel.js';
 // isSupp: check if rect is support (defined by transformations) or
 //   core (defined by the user)
 // isCore: opposite of isSupp
+// oldVersions: array containing older references to the same rect
+//   before being preserved by the preserveR function. This value
+//   is important for transformations relying on correct rect.inst
+//   values even after rect gets transformed by functions (and its
+//   object reference changes)
 // init: channel set to true when a rect is initialized
 // stop: channel set to true when a rect is initialized
 // created: node equal to true after rect is initialized and
@@ -51,8 +56,9 @@ export const Rect = def => {
 
     const defaultRectAttrs = {
         isRect: true,
-        isCore: true,
         isSupp: false,
+        isCore: true,
+        oldVersions: [],
         init: chan(),
         stop: chan(),
         created: node(),
@@ -115,8 +121,10 @@ export const preserveR = (rect, changes) => {
             }
         });
     }
-    aux.init = rect.init;
-    aux.created = rect.created;
+    aux.inst = null; //rect.inst;
+    aux.init = chan(); //rect.init;
+    aux.created = node(); //rect.created;
+    aux.oldVersions = rect.oldVersions.concat([rect]);
     return Rect(concatObj(rect, aux));
 };
 

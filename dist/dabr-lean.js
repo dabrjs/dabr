@@ -290,6 +290,19 @@ const mapT = f => (tree, path = []) =>
               )
     );
 
+const treePath = (tree, path) => {
+    let res = null;
+    walkT((t, p) => {
+        console.log('AAAAAAAAAAAAAAAAaaa', t, p);
+        if (isEqual(p, path)) {
+            res = t;
+        }
+    })(tree);
+    return res;
+};
+
+const getFirst = tree => treePath(tree, []);
+
 // Similar to map but the output does not matter
 const walkT = f => (tree, path = []) => {
     f(tree.val, path);
@@ -552,6 +565,11 @@ const filterC = (chan, cond) =>
 // isSupp: check if rect is support (defined by transformations) or
 //   core (defined by the user)
 // isCore: opposite of isSupp
+// oldVersions: array containing older references to the same rect
+//   before being preserved by the preserveR function. This value
+//   is important for transformations relying on correct rect.inst
+//   values even after rect gets transformed by functions (and its
+//   object reference changes)
 // init: channel set to true when a rect is initialized
 // stop: channel set to true when a rect is initialized
 // created: node equal to true after rect is initialized and
@@ -588,8 +606,9 @@ const Rect = def => {
 
     const defaultRectAttrs = {
         isRect: true,
-        isCore: true,
         isSupp: false,
+        isCore: true,
+        oldVersions: [],
         init: chan(),
         stop: chan(),
         created: node(),
@@ -652,8 +671,10 @@ const preserveR = (rect, changes) => {
             }
         });
     }
-    aux.init = rect.init;
-    aux.created = rect.created;
+    aux.inst = null; //rect.inst;
+    aux.init = chan(); //rect.init;
+    aux.created = node(); //rect.created;
+    aux.oldVersions = rect.oldVersions.concat([rect]);
     return Rect(concatObj(rect, aux));
 };
 
@@ -1807,7 +1828,14 @@ const runInside = (rectT, parent) => {
         lay.posAbs,
         lay.sizAbs
     );
-    // Some lifetime nodes/channels triggered
+    // Trigger events for oldVersions as well. This way functions
+    // working with olderVersions of rects (before preserveR's) get
+    // the correct value of inst as well
+    rect.oldVersions.forEach(oldVersion => {
+        oldVersion.inst = rect.inst;
+        oldVersion.init.put = true;
+        oldVersion.created.val = true;
+    });
     rect.init.put = true;
     rect.created.val = true;
     // Adds trigger for children creation/removal (remember children
@@ -1887,4 +1915,4 @@ const addDabrCss = elem => {
     elem.style['overflow-x'] = 'scroll';
 };
 
-export { Dummy, Entry, Rect, RectT, Supp, SuppT, T, Tree, addChans, addNodes, addStyle, applyF, chan, chanL, cond, condElse, core, filterC, flatten, keyed, listen, listenOnce, mapC, mapN, mapT, node, nodeT, preserveR, px, rel, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, safeMapN, safeNodeT, safeTran, supp, toNode, top, tran, tree, walkT };
+export { Dummy, Entry, Rect, RectT, Supp, SuppT, T, Tree, addChans, addNodes, addStyle, applyF, chan, chanL, cond, condElse, core, filterC, flatten, getFirst, keyed, listen, listenOnce, mapC, mapN, mapT, node, nodeT, preserveR, px, rel, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, safeMapN, safeNodeT, safeTran, supp, toNode, top, tran, tree, treePath, walkT };

@@ -14,16 +14,27 @@ import {
     walkT,
     //
     node,
+    tran,
     //
     chan,
     listen,
     listenOnce,
+    //
+    Rect,
+    Tree,
     //
     RectT,
     top,
     core,
     tree
 } from '../dist/dabr.js';
+import {
+    text,
+    line,
+    linesL,
+    linesR,
+    linesC
+} from '../src/lib/index.js';
 import { randomColor } from '../src/utils/index.js';
 
 window.b = node({ color: 'orange', width: 1 });
@@ -141,18 +152,50 @@ const rect3 = () =>
                         scroll: k
                     }
                 },
-                RectT({
-                    layout: {
-                        pos: [50, 50],
-                        siz: [10, 1000]
-                    },
-                    style: {
-                        color: 'black'
-                    }
-                })
+                Tree(
+                    Rect({
+                        layout: {
+                            pos: [50, 50],
+                            siz: [1000, 1000]
+                        },
+                        style: {
+                            color: 'black'
+                        }
+                    })
+                )
+            ),
+            Tree(
+                linesC([tt,tt2])(
+                    Rect({
+                        layout: {
+                            pos: [0, 0],
+                            siz: [100, 10]
+                        }
+                        //style: {
+                        //    color: randomColor()
+                        //}
+                    })
+                )
             )
         ]
     );
+
+const tt = node({
+    color: 'white',
+    //size: '1em',
+    family: 'Arial',
+    content:
+        'Lorem Ipsum is simply dummy text of the printing and typesetting industry.'
+});
+const tt2 = node({
+    color: 'cyan',
+    //size: '1em',
+    family: 'Arial',
+    content:
+        'Loreasdkasdoas doaisdmaosdi aosid asodi asodiahsfoa sodiasb foaisbf.'
+});
+window.tt = tt;
+window.tt2 = tt2;
 
 const rect2 = RectT(
     {
@@ -179,7 +222,7 @@ const rect2 = RectT(
         },
         rect: {
             destroy: true,
-            content: top(proportional(node([1, 1])))(rect3())
+            content: rect3() //top(proportional(node([1, 1])))(rect3())
         }
     })
 );

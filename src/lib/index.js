@@ -5,3 +5,4 @@ export * from './switch.js';
 export * from './animation.js';
 export * from './scrollbar.js';
 export * from './url-node.js';
+export * from './text.js';

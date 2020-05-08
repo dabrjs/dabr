@@ -102,7 +102,14 @@ const runInside = (rectT, parent) => {
         lay.posAbs,
         lay.sizAbs
     );
-    // Some lifetime nodes/channels triggered
+    // Trigger events for oldVersions as well. This way functions
+    // working with olderVersions of rects (before preserveR's) get
+    // the correct value of inst as well
+    rect.oldVersions.forEach(oldVersion => {
+        oldVersion.inst = rect.inst;
+        oldVersion.init.put = true;
+        oldVersion.created.val = true;
+    });
     rect.init.put = true;
     rect.created.val = true;
     // Adds trigger for children creation/removal (remember children
