@@ -1,7 +1,7 @@
 import { node, tran } from '../node.js';
 import { listen, chan } from '../channel.js';
 import { RectT } from '../rect-tree.js';
-import { rel } from '../layout.js';
+import { len } from '../coord.js';
 
 const scrollbar = (scroll, max_) => {
     const pos = node([0, 0]);
@@ -32,7 +32,7 @@ const scrollbar = (scroll, max_) => {
     const r = RectT(
         {
             layout: {
-                pos: rel([100, 0], [-10, 0]),
+                pos: [len(100, -10), 0],
                 siz: a,
                 sizAbs: sizAbs_
             },
@@ -56,14 +56,14 @@ const scrollbar = (scroll, max_) => {
 
     tran([max_], () => {
         const max = max_.val;
-        a.val = rel([0, (100 / 100) * max[1]], [10, 0]);
+        a.val = [len(0, 10), max[1]]; //len([0, (100 / 100) * max[1]], [10, 0]);
     });
 
     /*listenOnce(r.init, () => {
         const max_ = r.inst.par.layout.max;
         tran(max_, () => {
             const max = max_.val;
-            a.val = rel([0, (100 / 100) * max[1]], [10, 0]);
+            a.val = len([0, (100 / 100) * max[1]], [10, 0]);
         });
     });*/
 

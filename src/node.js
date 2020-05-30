@@ -70,6 +70,40 @@ export const tran = (nodes, func) => {
     }
 };
 
+// Same thing as tran but every transition has a ref attribute in a
+// way thaat only 1 transition with the same 'ref' object can be
+// inside a node. When tranRef is used in  node with a transition with
+// the same ref, the old transition is replaced by the new one. This
+// is useful sometimes
+export const tranRef = (ref, nodes, func) => {
+    if (nodes.length > 0) {
+        const transition = { nodes, func, ref };
+        // Many transitions with the same tag is not allowed. Tags are
+        // used as an indentity for dynamically created transitions.
+        nodes.forEach(nd => {
+            const targ = nd.target;
+            const ts = targ.trans;
+            if (!ts.has(transition)) {
+                const res = [...ts].find(t => t.ref == ref);
+                if (res) {
+                    removeTran(res);
+                    ts.add(transition);
+                } else {
+                    ts.add(transition);
+                }
+            }
+        });
+        // The transition runs right away if nodes are initialized with
+        // non null values.
+        if (allNodesNotNull(nodes)) {
+            func();
+        }
+        return transition;
+    } else {
+        return null;
+    }
+};
+
 // Only runs if all binded nodes are not null
 export const safeTran = (nodes, func) =>
     tran(nodes, () => {
@@ -112,3 +146,21 @@ export const mapN = (ns, f, info) =>
 
 export const safeMapN = (ns, f, info) =>
     safeNodeT(ns, () => f(...ns.map(n => n.val)), info);
+
+// If a node carries object information, the subNode function creates
+// a 1-way sub-node, that changes when the original node's attribute
+// changes. It is 1-way because changing the sub-node does not change
+// the parent node.
+const subNode = (nd, attr) => mapN([nd], x => x[attr]);
+
+// Like 'subNode' but with 2-way changes. Changing the sub-node
+// changes the parent node as well
+const subNode2 = (nd, attr) => {
+    const aux = mapN([nd], x => x[attr]);
+    tran([aux], () => {
+        const val = nd.val;
+        val[attr] = aux.val;
+        nd.val = val;
+    });
+    return aux;
+};

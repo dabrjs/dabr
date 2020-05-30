@@ -8,4 +8,3 @@ script:
 after_success:
   - yarn build
   - yarn docs
-  - yarn run semantic-release

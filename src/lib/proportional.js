@@ -3,7 +3,7 @@ import { listenOnce } from '../channel.js';
 import { preserveR, keyed } from '../rect.js';
 import { SuppT } from '../rect-tree.js';
 import { Tree, Entry } from '../tree.js';
-import { px } from '../layout.js';
+import { px } from '../coord.js';
 
 export const proportional = prop => rect => {
     const innerPos = node();
@@ -28,8 +28,8 @@ export const proportional = prop => rect => {
                 prop.val,
                 sizAbs.val
             );
-            innerPos.val = px(offset);
-            innerSiz.val = px(newSize);
+            innerPos.val = [px(offset[0]), px(offset[1])];
+            innerSiz.val = [px(newSize[0]), px(newSize[1])];
         });
     });
     return SuppT(

@@ -9,6 +9,7 @@ import addChans from './events/index.js';
 import addNodes from './nodes/index.js';
 //import ResizeObserver from '../node_modules/resize-observer-polyfill/src/ResizeObserver.js';
 import ResizeObserver from 'resize-observer-polyfill';
+import { removeEvents } from './rect.js';
 
 // Initializes Rect: creates DOM, adds layout, nodes, chans and style
 // triggers. Runs inside 'document.body'.
@@ -125,13 +126,10 @@ const addChildrenTrigger = (children, parent) => {
     const t = tran([children], () => {
         let neu = children.val;
         let alt = children.old;
-
         if (!alt) alt = [];
         if (!neu) neu = [];
-
         const removed = alt.filter(x => !neu.includes(x));
         const created = neu.filter(x => !alt.includes(x));
-
         created.forEach(x => runInside(x, parent));
         removed.forEach(x => removeRect(x));
     });
@@ -150,6 +148,7 @@ export const removeRect = rectT => {
     rect.renderTrans.forEach(tran => {
         removeTran(tran);
     });
+    removeEvents(rect);
     rect.inst = null;
     rect.stop.put = true;
     rect.removed.val = true;

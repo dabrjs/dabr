@@ -1,35 +1,99 @@
 import { listenOnce } from '../channel.js';
-import { tran, safeTran, mapN, node, nodeT } from '../node.js';
+import {
+    tran,
+    safeTran,
+    safeMapN,
+    mapN,
+    node,
+    nodeT
+} from '../node.js';
 import { proportional } from './proportional.js';
 import { core, top } from '../rect-tree.js';
 import { Dummy, Supp } from '../rect.js';
 import { Tree, treePath, Entry } from '../tree.js';
+import { asPx, lenToPx, px } from '../coord.js';
+import { flexY } from './flex.js';
+import { preserveR } from '../rect.js';
 
 export const text = textNode => rect => {
+    const textSize = node();
+    const textDom = node();
+    rect.data.set(text, { size: textSize, dom: textDom });
     listenOnce([rect.init], () => {
         mapN(
             [textNode],
             ({
-                color = 'black',
-                size = '16px',
+                color,
+                size,
                 family,
                 align,
-                content
+                content,
+                wordBreak,
+                whiteSpace
             }) => {
                 const elem = rect.inst.dom;
-                elem.style['color'] = color;
-                elem.style['font-size'] = size;
-                elem.style
-                ['text-align'] = 'center';
-                elem.style['width'] = 'max-content';
-                if (align) elem.style['text-align'] = align;
-                if (family) elem.style['font-family'] = family;
-                elem.innerText = content;
+                const ans = elem.getElementsByClassName('dabr-text');
+                let div;
+                if (ans.length == 1) {
+                    div = ans[0];
+                } else {
+                    div = document.createElement('div');
+                    elem.appendChild(div);
+                }
+                elem.style['overflow'] = 'hidden';
+                div.style['color'] = color || 'black';
+                div.style['font-size'] = size || '16px';
+                if (align) div.style['text-align'] = align;
+                if (family) div.style['font-family'] = family;
+                div.style['word-break'] = wordBreak || 'break-all';
+                if (whiteSpace) div.style['white-space'] = whiteSpace;
+                div.classList.add('dabr-text');
+                div.innerText = content;
+                textDom.val = div;
             }
         );
+        tran([rect.layout.sizAbs, textNode], () => {
+            const div = textDom.val;
+            const newSize = [div.offsetWidth, div.offsetHeight];
+            if (newSize[0] != 0 && newSize[1] != 0) {
+                textSize.val = newSize;
+            }
+        });
     });
     return rect;
 };
+
+export const paragraph = (textNode, rect) => {
+    const res = text(textNode)(rect);
+    const { size: textSize } = res.data.get(text);
+    safeTran([textSize], () => {
+        const [, h] = asPx(textSize.val);
+        const [w] = res.layout.siz.val;
+        res.layout.siz.val = [w, h];
+    });
+    return res;
+};
+
+export const paragraphMin = (textNode, minHeight, rect) => {
+    const res = text(textNode)(rect);
+    listenOnce([res.init], () => {
+        const lay = res.layout;
+        const pLay = res.inst.par.layout;
+        const { size: textSize } = res.data.get(text);
+        safeMapN(
+            [textSize, lay.siz, minHeight, pLay.sizAbs, pLay.max],
+            (ts, s, mh, psa, pm) => {
+                const mhPx = lenToPx(psa[1], pm[1], mh);
+                const [, th] = ts;
+                const aux = [s[0], th < mhPx ? mh : px(th)];
+                res.layout.siz.val = aux;
+            }
+        );
+    });
+    return res;
+};
+
+////////////////////////////// Lines
 
 // Kinda smooth the number to 3 decimal places (and add a -0.02 just
 // to make sure a text is never ever bigger than the rectangle size)
@@ -71,8 +135,8 @@ export const linesTemplate = justify => textNs => rect => {
         sizs.forEach((siz, i) => {
             sizes[i].val = siz;
         });
-        const sizsX = sizs.map(([x, _]) => x);
-        const sizsY = sizs.map(([_, y]) => y);
+        const sizsX = sizs.map(([x]) => x);
+        const sizsY = sizs.map(([, y]) => y);
         const w = sizsX.reduce((sx, sy) => Math.max(sx, sy));
         const h = sizsY.reduce((sx, sy) => sx + sy);
         prop.val = [w, h];
@@ -82,7 +146,7 @@ export const linesTemplate = justify => textNs => rect => {
     const children = textNs.map((textN, i) => {
         const fullTextN = nodeT([textN, fontSize], () => ({
             ...textN.val,
-            ...{ size: fontSize.val }
+            ...{ size: fontSize.val, whiteSpace: 'nowrap' }
         }));
         const stepSiz = (i / n) * 100;
         const siz = mapN([sizes[i], prop], ([w, h], [pw, ph]) => [
@@ -92,7 +156,7 @@ export const linesTemplate = justify => textNs => rect => {
         const post = justify(siz, stepSiz);
         const r = Supp({
             layout: {
-                pos: [0, stepSiz],
+                pos: post,
                 siz
             }
         });
@@ -111,7 +175,7 @@ export const linesTemplate = justify => textNs => rect => {
     return res;
 };
 
-export const linesL = linesTemplate((siz, step) => [0, step]);
+export const linesL = linesTemplate((siz, step) => node([0, step]));
 export const linesR = linesTemplate((siz, step) =>
     mapN([siz], ([sx, sy]) => [100 - sx, step])
 );
@@ -119,29 +183,3 @@ export const linesC = linesTemplate((siz, step) =>
     mapN([siz], ([sx, sy]) => [(100 - sx) / 2, step])
 );
 export const line = textNode => linesL([textNode]);
-
-// export const textArea = textNode => rect => {
-//     const area16 = mapN([textNode], () => {
-//         const [w, h] = getSizeOf16pxText(textNode.val);
-//         return w * h;
-//     });
-//     const fontSize = node();
-//     const fullTextN = nodeT([textNode, fontSize], () => ({
-//         ...textNode.val,
-//         ...{ size: fontSize.val }
-//     }));
-//     tran([rect.layout.sizAbs, area16], () => {
-//         const [w, h] = rect.layout.sizAbs.val;
-//         const areaNow = w * h;
-//         const newSize = smooth((areaNow / area16.val) * 16);
-//         console.log(
-//             'new size!',
-//             area16.val,
-//             [w, h],
-//             areaNow / area16.val,
-//             newSize
-//         );
-//         fontSize.val = newSize + 'px';
-//     });
-//     return text(fullTextN)(rect);
-// };

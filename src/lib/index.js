@@ -6,3 +6,5 @@ export * from './animation.js';
 export * from './scrollbar.js';
 export * from './url-node.js';
 export * from './text.js';
+export * from './verticalHorizontal.js';
+export * from './flex.js';

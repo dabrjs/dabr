@@ -26,10 +26,25 @@ import {
     RectT,
     top,
     core,
-    tree
+    tree,
+    mapT,
+    Dummy,
+    vertical,
+    horizontal,
+    toNode,
+    verticalSpace,
+    horizontalSpace,
+    flex,
+    flexX,
+    flexY,
+    px,
+    len,
+    mapN
 } from '../dist/dabr.js';
 import {
     text,
+    paragraph,
+    paragraphMin,
     line,
     linesL,
     linesR,
@@ -124,6 +139,8 @@ const s = node([100, 100]);
 const k = node();
 window.k = k;
 
+const ss = node();
+
 const rect3 = () =>
     RectT(
         {
@@ -135,6 +152,9 @@ const rect3 = () =>
             events: { click: h },
             style: {
                 color: randomColor()
+            },
+            nodes: {
+                //fullSize: ss
             }
         },
         [
@@ -165,7 +185,7 @@ const rect3 = () =>
                 )
             ),
             Tree(
-                linesC([tt,tt2])(
+                linesC([tt, tt2])(
                     Rect({
                         layout: {
                             pos: [0, 0],
@@ -182,20 +202,234 @@ const rect3 = () =>
 
 const tt = node({
     color: 'white',
-    //size: '1em',
     family: 'Arial',
     content:
         'Lorem Ipsum is simply dummy text of the printing and typesetting industry.'
 });
 const tt2 = node({
     color: 'cyan',
-    //size: '1em',
     family: 'Arial',
     content:
         'Loreasdkasdoas doaisdmaosdi aosid asodi asodiahsfoa sodiasb foaisbf.'
 });
 window.tt = tt;
 window.tt2 = tt2;
+
+////////////////
+
+const area = (pos, siz) =>
+    Rect({
+        layout: {
+            pos,
+            siz
+        }
+    });
+
+const rect = siz => {
+    const sizN = toNode(siz);
+    const child = linesC([
+        node({
+            content: 'Título'
+        })
+    ])(
+        Rect({
+            layout: {
+                pos: [0, 0],
+                siz: [100, 20]
+            }
+        })
+    );
+    return RectT(
+        {
+            layout: {
+                pos: [0, 0],
+                siz: sizN
+            },
+            style: {
+                color: randomColor()
+            }
+        },
+        child
+    );
+};
+
+const scrolla = node();
+window.s = scrolla;
+const max = node([100, 100]);
+
+const textNode = node({
+    color: 'black',
+    size: '16px',
+    content:
+        'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur id lorem vitae purus venenatis iaculis. Etiam pharetra ligula elit, sit amet interdum eros vestibulum a. Integer pretium id odio a iaculis. Nullam id nunc interdum sem varius malesuada. Suspendisse cursus lacinia vulputate. Sed at est scelerisque, iaculis justo sed, rhoncus erat. Aenean id nisl ac magna scelerisque pretium eu ut tellus. Sed iaculis, est id aliquam consequat, diam nisl egestas libero, vel vehicula nulla ante nec nisl. Cras sed massa non diam molestie fermentum. Quisque aliquet rhoncus sem sed iaculis.'
+});
+
+const lolo = () =>
+    Tree(
+        paragraph(
+            textNode,
+            //node(70),
+            Rect({
+                layout: {
+                    pos: [0, 0],
+                    siz: [70, 70]
+                },
+                style: {
+                    color: randomColor()
+                }
+            })
+        )
+    );
+
+const mainContent = RectT(
+    {
+        layout: {
+            pos: [0, 0],
+            siz: [100, 100],
+            max
+        },
+        nodes: {
+            scroll: scrolla
+        },
+        style: {
+            color: randomColor()
+        }
+    },
+    vertical([
+        rect([100, 30]),
+        rect([100, 30]),
+        rect([100, 30]),
+        Tree(verticalSpace(node(10))),
+        rect([100, 30]),
+        rect([100, 30]),
+        rect([100, 30]),
+        rect([100, 30]),
+        rect([100, 30])
+    ]) //.map(top(margin_(node(px([5, 5])))))
+);
+
+const navbar = Rect({
+    layout: {
+        pos: [0, 0],
+        siz: [100, 100]
+    },
+    style: {
+        color: randomColor()
+    }
+});
+
+const sidebar = Rect({
+    layout: {
+        pos: [0, 0],
+        siz: [100, 100]
+    },
+    style: {
+        color: randomColor()
+    }
+});
+
+const structure = Tree(Dummy(), [
+    Tree(area([0, 0], [100, 5]), Tree(navbar)),
+    Tree(area([0, 5], [15, 95]), Tree(sidebar)),
+    Tree(area([15, 5], [85, 95]), [
+        mainContent,
+        scrollbar(scrolla, max)
+    ])
+]);
+
+const lele = RectT(
+    {
+        layout: {
+            pos: [0, 0],
+            siz: [100, 100],
+            max
+        },
+        style: {
+            color: randomColor()
+        }
+    },
+    horizontal([
+        rect([30, 100]),
+        rect([30, 100]),
+        rect([30, 100]),
+        Tree(
+            paragraph(
+                textNode,
+                Rect({
+                    layout: {
+                        pos: [0, 0],
+                        siz: [70, 70]
+                    },
+                    style: {
+                        color: randomColor()
+                    }
+                })
+            )
+        ),
+        rect([30, 100]),
+        Tree(horizontalSpace(node(10))),
+        rect([30, 100]),
+        rect([30, 100]),
+        rect([30, 100]),
+        rect([30, 100])
+    ]) //.map(top(margin_(node(px([5, 5])))))
+);
+
+const rects = () =>
+    node([
+        rect([30, 100]),
+        rect([px(30), px(100)]),
+        rect([px(30), px(100)]),
+        lolo(),
+        rect([px(30), px(100)]),
+        rect([px(30), px(100)]),
+        rect([px(30), px(100)]),
+        rect([px(30), px(100)])
+    ]);
+
+window.add = (x, y) => {
+    rects.val = rects.val.concat([rect([px(x), px(y)])]);
+};
+
+window.add2 = (x, y) => {
+    rects.val = rects.val.concat([rect([x, y])]);
+};
+
+const lili = Tree(
+    flexY(
+        Rect({
+            layout: {
+                pos: [0, 0],
+                siz: [70, 70]
+            },
+            style: {
+                color: randomColor()
+            }
+        })
+    ),
+    mapN([rects()], vertical)
+);
+
+const z = node();
+
+tran([z], () => {
+    console.log('z', z);
+});
+const lulu = Tree(
+    Rect({
+        layout: {
+            pos: [0, 0],
+            siz: [70, 70]
+        },
+        nodes: {
+            fullSize: z
+        },
+        style: {
+            color: randomColor()
+        }
+    }),
+    mapN([rects()], vertical)
+);
 
 const rect2 = RectT(
     {
@@ -211,21 +445,25 @@ const rect2 = RectT(
         }
     },
     switcher(rou, {
-        '': {
-            destroy: true,
-            content: rect1([20, 20], [90, 90])
-        },
+        '': rect1([20, 20], [90, 90]),
         hey: rect1([40, 40], [20, 20]),
         fuck: {
             destroy: false,
             content: rect1([0, 0], [100, 100])
         },
-        rect: {
-            destroy: true,
-            content: rect3() //top(proportional(node([1, 1])))(rect3())
-        }
+        lala: structure,
+        rect: rect3(), //top(proportional(node([1, 1])))(rect3())
+        lele: lele,
+        lili: lili,
+        lolo: lolo(),
+        lulu: lulu
     })
 );
+
+window.ss = ss;
+tran([ss], () => {
+    console.log('ssss', ss, ss.val);
+});
 
 console.log('asdasdasd', rect2);
 run(rect2);

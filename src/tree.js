@@ -37,7 +37,7 @@ export const T = Tree;
 // Maps a function through the rect
 export const mapT = f => (tree, path = []) =>
     Tree(
-        f(tree.val, path),
+        f(tree.val, tree, path),
         tree.children.isEntry
             ? tree.children
             : mapN([tree.children], chs =>

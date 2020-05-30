@@ -1,58 +1,58 @@
 {
-  "name": "dabr",
-  "version": "0.0.0-development",
-  "main": "index.js",
-  "repository": "git@github.com:dabrjs/dabr.git",
-  "author": "<luizss@dabrjs.org>",
-  "license": "MIT",
-  "devDependencies": {
-    "@babel/preset-env": "^7.9.0",
-    "@rollup/plugin-node-resolve": "^7.1.1",
-    "commitizen": "^4.0.3",
-    "cz-conventional-changelog": "^3.1.0",
-    "eslint": "^6.8.0",
-    "eslint-config-prettier": "^6.10.0",
-    "eslint-plugin-prettier": "^3.1.2",
-    "eslint-watch": "^6.0.1",
-    "husky": ">=4",
-    "jest": "^25.1.0",
-    "jsdoc": "^3.6.3",
-    "lint-staged": ">=10",
-    "prettier": "^1.19.1",
-    "rollup": "^2.1.0",
-    "rollup-plugin-multi-entry": "^2.1.0",
-    "rollup-plugin-terser": "^5.3.0",
-    "semantic-release": "^17.0.7"
-  },
-  "scripts": {
-    "semantic-release": "semantic-release",
-    "lint": "eslint --cache --fix",
-    "test": "jest --collect-coverage src",
-    "build": "rollup --config",
-    "commit": "yarn build && git-cz",
-    "lint-watch": "esw src rollup.config.js examples --fix -w --color",
-    "test-watch": "jest --verbose --watch src",
-    "watch": "npm-watch"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
-  "config": {
-    "commitizen": {
-      "path": "./node_modules/cz-conventional-changelog"
+    "name": "dabr",
+    "version": "0.0.0-development",
+    "main": "index.js",
+    "repository": "git@github.com:dabrjs/dabr.git",
+    "author": "<luizss@dabrjs.org>",
+    "license": "MIT",
+    "devDependencies": {
+        "@babel/preset-env": "^7.9.0",
+        "@rollup/plugin-node-resolve": "^7.1.1",
+        "commitizen": "^4.0.3",
+        "cz-conventional-changelog": "^3.1.0",
+        "eslint": "^6.8.0",
+        "eslint-config-prettier": "^6.10.0",
+        "eslint-plugin-prettier": "^3.1.2",
+        "eslint-watch": "^6.0.1",
+        "husky": ">=4",
+        "jest": "^25.1.0",
+        "jsdoc": "^3.6.3",
+        "lint-staged": ">=10",
+        "prettier": "^1.19.1",
+        "rollup": "^2.1.0",
+        "rollup-plugin-multi-entry": "^2.1.0",
+        "rollup-plugin-terser": "^5.3.0",
+        "semantic-release": "^17.0.7"
+    },
+    "scripts": {
+        "semantic-release": "semantic-release",
+        "lint": "eslint --cache --fix",
+        "test": "jest --collect-coverage src",
+        "build": "rollup --config",
+        "commit": "yarn build && git-cz",
+        "lint-watch": "esw src rollup.config.js examples --fix -w --color",
+        "test-watch": "jest --verbose --watch src",
+        "watch": "npm-watch"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "config": {
+        "commitizen": {
+            "path": "./node_modules/cz-conventional-changelog"
+        }
+    },
+    "dependencies": {
+        "resize-observer-polyfill": "^1.5.1"
+    },
+    "husky": {
+        "hooks": {
+            "pre-commit": "lint-staged"
+        }
+    },
+    "lint-staged": {
+        "src/*.js": [
+            "yarn test"
+        ]
     }
-  },
-  "dependencies": {
-    "resize-observer-polyfill": "^1.5.1"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
-  "lint-staged": {
-    "src/*.js": [
-      "yarn test"
-    ]
-  }
 }

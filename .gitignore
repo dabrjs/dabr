@@ -6,6 +6,6 @@ yarn-error.log
 .pnp.js
 .yarnrc.yml
 .eslintcache
-todo.org
+*.org
 coverage
 old

@@ -31,6 +31,8 @@ import { chan } from './channel.js';
 //   inst.par: the parent rect
 // renderTrans: references to transitions related to DOM rendering.
 //   Normally the user should not modify this attr.
+// domEvents: events inside the rect which should be deleted when the
+//   rect is removed
 // data: additional information/nodes/channels outside of the standard
 //   attrs that the rect interacts with. It is good practice for
 //   transformations to put additional data inside this attr with key
@@ -65,6 +67,8 @@ export const Rect = def => {
         removed: node(),
         inst: null,
         renderTrans: new Set(),
+        domEvents: [],
+        //renderListens: new Set(),
         data: new WeakMap([[Rect, {}]]),
         layout: defaultLayout
     };
@@ -146,3 +150,20 @@ export const Dummy = changes =>
         }),
         changes || {}
     );
+
+export const removeEvents = rect => {
+    const elem = rect.inst.dom;
+    rect.domEvents.forEach(({ name, func }) => {
+        elem['on' + name] = null;
+        //elem.removeEventListener(name, func);
+    });
+};
+
+export const addEvent = (rect, name, func) => {
+    const elem = rect.inst.dom;
+    elem['on' + name] = func;
+    rect.domEvents.push({
+        name,
+        func
+    });
+};

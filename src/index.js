@@ -8,6 +8,7 @@ export * from './rect.js';
 export * from './tree.js';
 export * from './rect-tree.js';
 export * from './run.js';
+export * from './layout.js';
+export * from './coord.js';
 export { applyF } from './utils/index.js';
-export { rel, px } from './layout.js';
 export { addStyle, addChans, addNodes };

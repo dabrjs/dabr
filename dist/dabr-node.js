@@ -159,6 +159,40 @@ const tran = (nodes, func) => {
     }
 };
 
+// Same thing as tran but every transition has a ref attribute in a
+// way thaat only 1 transition with the same 'ref' object can be
+// inside a node. When tranRef is used in  node with a transition with
+// the same ref, the old transition is replaced by the new one. This
+// is useful sometimes
+const tranRef = (ref, nodes, func) => {
+    if (nodes.length > 0) {
+        const transition = { nodes, func, ref };
+        // Many transitions with the same tag is not allowed. Tags are
+        // used as an indentity for dynamically created transitions.
+        nodes.forEach(nd => {
+            const targ = nd.target;
+            const ts = targ.trans;
+            if (!ts.has(transition)) {
+                const res = [...ts].find(t => t.ref == ref);
+                if (res) {
+                    removeTran(res);
+                    ts.add(transition);
+                } else {
+                    ts.add(transition);
+                }
+            }
+        });
+        // The transition runs right away if nodes are initialized with
+        // non null values.
+        if (allNodesNotNull(nodes)) {
+            func();
+        }
+        return transition;
+    } else {
+        return null;
+    }
+};
+
 // Only runs if all binded nodes are not null
 const safeTran = (nodes, func) =>
     tran(nodes, () => {
@@ -202,4 +236,4 @@ const mapN = (ns, f, info) =>
 const safeMapN = (ns, f, info) =>
     safeNodeT(ns, () => f(...ns.map(n => n.val)), info);
 
-export { mapN, node, nodeT, removeTran, safeMapN, safeNodeT, safeTran, toNode, tran };
+export { mapN, node, nodeT, removeTran, safeMapN, safeNodeT, safeTran, toNode, tran, tranRef };

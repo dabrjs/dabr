@@ -44,6 +44,25 @@ export const listen = (chans, func) => {
     return listener;
 };
 
+// Same thing as listen but every listener has a ref attribute in a
+// way that only 1 listener with the same 'ref' object can be inside
+// a channel. When listenRef is used in node with a transition with
+// the same ref, the old transition is replaced by the new one.
+export const listenRef = (ref, chans, func) => {
+    const listener = { chans, func, ref };
+    chans.forEach(chan => {
+        const ps = chan.ports;
+        const res = [...ps].find(l => l.ref == ref);
+        if (res) {
+            removeListen(res);
+            ps.add(listener);
+        } else {
+            ps.add(listener);
+        }
+    });
+    return listener;
+};
+
 // Listener removal
 export const removeListen = listener => {
     listener.chans.forEach(chan => {

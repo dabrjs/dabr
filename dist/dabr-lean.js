@@ -203,6 +203,40 @@ const tran = (nodes, func) => {
     }
 };
 
+// Same thing as tran but every transition has a ref attribute in a
+// way thaat only 1 transition with the same 'ref' object can be
+// inside a node. When tranRef is used in  node with a transition with
+// the same ref, the old transition is replaced by the new one. This
+// is useful sometimes
+const tranRef = (ref, nodes, func) => {
+    if (nodes.length > 0) {
+        const transition = { nodes, func, ref };
+        // Many transitions with the same tag is not allowed. Tags are
+        // used as an indentity for dynamically created transitions.
+        nodes.forEach(nd => {
+            const targ = nd.target;
+            const ts = targ.trans;
+            if (!ts.has(transition)) {
+                const res = [...ts].find(t => t.ref == ref);
+                if (res) {
+                    removeTran(res);
+                    ts.add(transition);
+                } else {
+                    ts.add(transition);
+                }
+            }
+        });
+        // The transition runs right away if nodes are initialized with
+        // non null values.
+        if (allNodesNotNull(nodes)) {
+            func();
+        }
+        return transition;
+    } else {
+        return null;
+    }
+};
+
 // Only runs if all binded nodes are not null
 const safeTran = (nodes, func) =>
     tran(nodes, () => {
@@ -282,7 +316,7 @@ const T = Tree;
 // Maps a function through the rect
 const mapT = f => (tree, path = []) =>
     Tree(
-        f(tree.val, path),
+        f(tree.val, tree, path),
         tree.children.isEntry
             ? tree.children
             : mapN([tree.children], chs =>
@@ -417,65 +451,6 @@ var addChans = mapT(r => {
     return r;
 });
 
-const nodes = {
-    scrollAbs: ({ elem, rect, node: scroll }) => {
-        elem.addEventListener('scroll', () => {
-            scroll.val = [elem.scrollLeft, elem.scrollTop];
-        });
-        const t = tran([scroll], () => {
-            const [l, t] = scroll.val;
-            elem.scrollLeft = l;
-            elem.scrollTop = t;
-        });
-        rect.renderTrans.add(t);
-    },
-    scroll: ({ elem, rect, node: scroll }) => {
-        const limN = mapN([rect.layout.sizAbs], siz => [
-            elem.scrollWidth - Math.round(siz[0]),
-            elem.scrollHeight - Math.round(siz[1])
-        ]);
-        elem.addEventListener('scroll', () => {
-            const lim = limN.val;
-            scroll.val = [
-                lim[0] === 0 ? 0 : 100 * (elem.scrollLeft / lim[0]),
-                lim[1] === 0 ? 0 : 100 * (elem.scrollTop / lim[1])
-            ];
-        });
-        const t = tran([scroll], () => {
-            const [l, t] = scroll.val;
-            const lim = limN.val;
-            const res = [
-                Math.round((l / 100) * lim[0]),
-                Math.round((t / 100) * lim[1])
-            ];
-            if (elem.scrollLeft != res[0]) {
-                elem.scrollLeft = res[0];
-            }
-            if (elem.scrollTop != res[1]) {
-                elem.scrollTop = res[1];
-            }
-        });
-        rect.renderTrans.add(t);
-    }
-};
-
-var addNodes = mapT(r => {
-    if (r.nodes) {
-        iterate(r.nodes, ([name, val]) => {
-            const nd = toNode(val);
-            const ans = nodes[name];
-            if (ans) {
-                ans({
-                    node: nd,
-                    elem: r.inst.dom,
-                    rect: r
-                });
-            }
-        });
-    }
-    return r;
-});
-
 // Channel creation entry point
 const chan = (val, info) =>
     mkChan({
@@ -516,6 +491,25 @@ const listen = (chans, func) => {
     const listener = { chans, func };
     chans.forEach(chan => {
         chan.ports.add(listener);
+    });
+    return listener;
+};
+
+// Same thing as listen but every listener has a ref attribute in a
+// way that only 1 listener with the same 'ref' object can be inside
+// a channel. When listenRef is used in node with a transition with
+// the same ref, the old transition is replaced by the new one.
+const listenRef = (ref, chans, func) => {
+    const listener = { chans, func, ref };
+    chans.forEach(chan => {
+        const ps = chan.ports;
+        const res = [...ps].find(l => l.ref == ref);
+        if (res) {
+            removeListen(res);
+            ps.add(listener);
+        } else {
+            ps.add(listener);
+        }
     });
     return listener;
 };
@@ -581,6 +575,8 @@ const filterC = (chan, cond) =>
 //   inst.par: the parent rect
 // renderTrans: references to transitions related to DOM rendering.
 //   Normally the user should not modify this attr.
+// domEvents: events inside the rect which should be deleted when the
+//   rect is removed
 // data: additional information/nodes/channels outside of the standard
 //   attrs that the rect interacts with. It is good practice for
 //   transformations to put additional data inside this attr with key
@@ -615,6 +611,8 @@ const Rect = def => {
         removed: node(),
         inst: null,
         renderTrans: new Set(),
+        domEvents: [],
+        //renderListens: new Set(),
         data: new WeakMap([[Rect, {}]]),
         layout: defaultLayout
     };
@@ -697,6 +695,186 @@ const Dummy = changes =>
         changes || {}
     );
 
+const removeEvents = rect => {
+    const elem = rect.inst.dom;
+    rect.domEvents.forEach(({ name, func }) => {
+        elem['on' + name] = null;
+        //elem.removeEventListener(name, func);
+    });
+};
+
+const addEvent = (rect, name, func) => {
+    const elem = rect.inst.dom;
+    elem['on' + name] = func;
+    rect.domEvents.push({
+        name,
+        func
+    });
+};
+
+const len = (rel, px) => ({
+    rel,
+    px
+});
+
+//export const rel = r => len(r, 0);
+
+const px = p => len(0, p);
+
+const addLen = (r1, r2) => {
+    const aux1 = isNotNull(r1.rel) ? r1 : { px: 0, rel: r1 };
+    const aux2 = isNotNull(r2.rel) ? r2 : { px: 0, rel: r2 };
+    const res = len(aux1.rel + aux2.rel, aux1.px + aux2.px);
+    return res;
+};
+
+const mulLen = (s, r) => {
+    const aux = r.rel ? r : { px: 0, rel: r };
+    return len(aux.rel * s, aux.px * s);
+};
+
+const addCoord = (c1, c2) => [
+    addLen(c1[0], c2[0]),
+    addLen(c1[1], c2[1])
+];
+
+const mulCoord = (s, c) => [mulLen(s, c[0]), mulLen(s, c[1])];
+
+const getPx = l => (isNotNull(l.px) ? l.px : 0);
+
+const getRel = l => (isNotNull(l.rel) ? l.rel : l);
+
+const absToRel = (pSizAbs, pMax, px) =>
+    (px * getRel(pMax)) / (pSizAbs - getPx(pMax));
+
+const absToPx = (pSizAbs, pMax, rel) =>
+    (rel * (pSizAbs - getPx(pMax))) / getRel(pMax);
+
+const lenToRel = (pSizAbs, pMax, l) => {
+    if (isNotNull(l.rel)) {
+        return l.rel + absToRel(pSizAbs, pMax, l.px);
+    } else {
+        return l;
+    }
+};
+
+const lenToPx = (pSizAbs, pMax, l) => {
+    if (isNotNull(l.rel)) {
+        return l.px + absToPx(pSizAbs, pMax, l.rel);
+    } else {
+        return absToPx(pSizAbs, pMax, l);
+    }
+};
+
+const coordToRel = ([psX, psY], [pmX, pmY], [cX, cY]) => [
+    lenToRel(psX, pmX, cX),
+    lenToRel(psY, pmY, cY)
+];
+
+const coordToPx = ([psX, psY], [pmX, pmY], [cX, cY]) => [
+    lenToPx(psX, pmX, cX),
+    lenToPx(psY, pmY, cY)
+];
+
+const splitCoord = ([x, y]) => [
+    [getRel(x), getRel(y)],
+    [getPx(x), getPx(y)]
+];
+
+const asPx = ([x, y]) => [px(x), px(y)];
+
+const scrollRef = {};
+
+const nodes = {
+    fullSize: ({ elem, rect, tree, node: fs }) => {
+        const t = tran([tree.children], () => {
+            const chs = tree.children.val;
+            let fsAbs = [0, 0];
+            chs.forEach(t => {
+                const r = t.val;
+                const lay = r.layout;
+                tranRef(t, [lay.posAbs, lay.sizAbs], () => {
+                    const limitAbs = vectorPlus(
+                        lay.posAbs.val,
+                        lay.sizAbs.val
+                    );
+                    const limit = addCoord(lay.pos.val, lay.siz.val);
+                    const auxAbs = fsAbs;
+                    const aux = fs.val || [0, 0];
+                    if (limitAbs[0] > fsAbs[0]) {
+                        auxAbs[0] = limitAbs[0];
+                        aux[0] = limit[0];
+                    }
+                    if (limitAbs[1] > fsAbs[1]) {
+                        auxAbs[1] = limitAbs[1];
+                        aux[1] = limit[1];
+                    }
+                    fsAbs = auxAbs;
+                    fs.val = aux;
+                });
+            });
+        });
+        rect.renderTrans.add(t);
+    },
+    scrollAbs: ({ elem, rect, node: scroll }) => {
+        addEvent(rect, 'scroll', () => {
+            scroll.val = [elem.scrollLeft, elem.scrollTop];
+        });
+        const t = tran([scroll], () => {
+            const [l, t] = scroll.val;
+            elem.scrollLeft = l;
+            elem.scrollTop = t;
+        });
+        rect.renderTrans.add(t);
+    },
+    scroll: ({ elem, rect, node: scroll }) => {
+        const limN = mapN([rect.layout.sizAbs], siz => [
+            elem.scrollWidth - Math.round(siz[0]),
+            elem.scrollHeight - Math.round(siz[1])
+        ]);
+        addEvent(rect, 'scroll', () => {
+            const lim = limN.val;
+            scroll.val = [
+                lim[0] === 0 ? 0 : 100 * (elem.scrollLeft / lim[0]),
+                lim[1] === 0 ? 0 : 100 * (elem.scrollTop / lim[1])
+            ];
+        });
+        const t = tranRef(scrollRef, [scroll], () => {
+            const [l, t] = scroll.val;
+            const lim = limN.val;
+            const res = [
+                Math.round((l / 100) * lim[0]),
+                Math.round((t / 100) * lim[1])
+            ];
+            if (elem.scrollLeft != res[0]) {
+                elem.scrollLeft = res[0];
+            }
+            if (elem.scrollTop != res[1]) {
+                elem.scrollTop = res[1];
+            }
+        });
+        rect.renderTrans.add(t);
+    }
+};
+
+var addNodes = mapT((r, t) => {
+    if (r.nodes) {
+        iterate(r.nodes, ([name, val]) => {
+            const nd = toNode(val);
+            const ans = nodes[name];
+            if (ans) {
+                ans({
+                    node: nd,
+                    elem: r.inst.dom,
+                    rect: r,
+                    tree: t
+                });
+            }
+        });
+    }
+    return r;
+});
+
 // A set of functions for easy Tree of Rect manipulation
 
 // Define a tree of rect and its in 1 function
@@ -724,15 +902,6 @@ const tree = cond(x => x.isTree);
 // Apply function only to the most top-level element of the tree
 const top = f => tree => Tree(f(tree.val), tree.children);
 
-// Length defined by relative value plus a pixel value
-const rel = (r, p) => ({
-    px: p,
-    rel: r
-});
-
-// Length in pixels
-const px = p => rel([0, 0], p);
-
 // Add render transitions related to layout (positioning)
 const addLayoutTriggers = (layout, elem, rect, parLayout) => {
     const maxN = parLayout.max;
@@ -741,15 +910,12 @@ const addLayoutTriggers = (layout, elem, rect, parLayout) => {
     const posT = tran([posN, maxN], () => {
         const pos = posN.val;
         const max = maxN.val;
-        if (pos.rel) {
-            elem.style.left = `calc(${(pos.rel[0] * 100) /
-                max[0]}% + ${pos.px[0]}px)`;
-            elem.style.top = `calc(${(pos.rel[1] * 100) /
-                max[1]}% + ${pos.px[1]}px)`;
-        } else {
-            elem.style.left = `${(pos[0] * 100) / max[0]}%`;
-            elem.style.top = `${(pos[1] * 100) / max[1]}%`;
-        }
+        elem.style.left = isNotNull(pos[0].rel)
+            ? `calc(${(pos[0].rel * 100) / max[0]}% + ${pos[0].px}px)`
+            : `${(pos[0] * 100) / max[0]}%`;
+        elem.style.top = isNotNull(pos[1].rel)
+            ? `calc(${(pos[1].rel * 100) / max[1]}% + ${pos[1].px}px)`
+            : `${(pos[1] * 100) / max[1]}%`;
     });
     rect.renderTrans.add(posT);
 
@@ -757,15 +923,12 @@ const addLayoutTriggers = (layout, elem, rect, parLayout) => {
     const sizT = tran([sizN, maxN], () => {
         const siz = sizN.val;
         const max = maxN.val;
-        if (siz.rel) {
-            elem.style.width = `calc(${(siz.rel[0] * 100) /
-                max[0]}% + ${siz.px[0]}px)`;
-            elem.style.height = `calc(${(siz.rel[1] * 100) /
-                max[1]}% + ${siz.px[1]}px)`;
-        } else {
-            elem.style.width = `${(siz[0] * 100) / max[0]}%`;
-            elem.style.height = `${(siz[1] * 100) / max[1]}%`;
-        }
+        elem.style.width = isNotNull(siz[0].rel)
+            ? `calc(${(siz[0].rel * 100) / max[0]}% + ${siz[0].px}px)`
+            : `${(siz[0] * 100) / max[0]}%`;
+        elem.style.height = isNotNull(siz[1].rel)
+            ? `calc(${(siz[1].rel * 100) / max[1]}% + ${siz[1].px}px)`
+            : `${(siz[1] * 100) / max[1]}%`;
     });
     rect.renderTrans.add(sizT);
 };
@@ -785,25 +948,25 @@ const defaultLayoutReactivity = (
     safeMapN(
         [posN, sizN, pMaxN, pPosAbsN, pSizAbsN],
         (pos, siz, pMax, pPosAbs, pSizAbs) => {
-            let posPx = [0, 0];
-            let sizPx = [0, 0];
-            let posRel = pos;
-            let sizRel = siz;
-            if (pos.rel) {
-                posRel = pos.rel;
-                posPx = pos.px;
-            }
-            if (siz.rel) {
-                sizRel = siz.rel;
-                sizPx = siz.px;
-            }
+            const [posRel, posPx] = splitCoord(pos);
+            const [sizRel, sizPx] = splitCoord(siz);
+            const [maxRel, maxPx] = splitCoord(pMax); //
             // Some simple math
-            let a = [pSizAbs[0] / pMax[0], pSizAbs[1] / pMax[1]];
+            let a = [
+                (pSizAbs[0] - maxPx[0]) / maxRel[0],
+                (pSizAbs[1] - maxPx[1]) / maxRel[1]
+            ];
             let sizAbs = [sizRel[0] * a[0], sizRel[1] * a[1]];
             let posAbs = [
                 posRel[0] * a[0] + pPosAbs[0],
                 posRel[1] * a[1] + pPosAbs[1]
             ];
+            // let a = [pSizAbs[0] / pMax[0], pSizAbs[1] / pMax[1]];
+            // let sizAbs = [sizRel[0] * a[0], sizRel[1] * a[1]];
+            // let posAbs = [
+            //     posRel[0] * a[0] + pPosAbs[0],
+            //     posRel[1] * a[1] + pPosAbs[1]
+            // ];
             posAbsN.val = vectorPlus(posAbs, posPx);
             sizAbsN.val = vectorPlus(sizAbs, sizPx);
         }
@@ -1851,13 +2014,10 @@ const addChildrenTrigger = (children, parent) => {
     const t = tran([children], () => {
         let neu = children.val;
         let alt = children.old;
-
         if (!alt) alt = [];
         if (!neu) neu = [];
-
         const removed = alt.filter(x => !neu.includes(x));
         const created = neu.filter(x => !alt.includes(x));
-
         created.forEach(x => runInside(x, parent));
         removed.forEach(x => removeRect(x));
     });
@@ -1876,6 +2036,7 @@ const removeRect = rectT => {
     rect.renderTrans.forEach(tran => {
         removeTran(tran);
     });
+    removeEvents(rect);
     rect.inst = null;
     rect.stop.put = true;
     rect.removed.val = true;
@@ -1915,4 +2076,4 @@ const addDabrCss = elem => {
     elem.style['overflow-x'] = 'scroll';
 };
 
-export { Dummy, Entry, Rect, RectT, Supp, SuppT, T, Tree, addChans, addNodes, addStyle, applyF, chan, chanL, cond, condElse, core, filterC, flatten, getFirst, keyed, listen, listenOnce, mapC, mapN, mapT, node, nodeT, preserveR, px, rel, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, safeMapN, safeNodeT, safeTran, supp, toNode, top, tran, tree, treePath, walkT };
+export { Dummy, Entry, Rect, RectT, Supp, SuppT, T, Tree, addChans, addCoord, addEvent, addLayoutTriggers, addLen, addNodes, addStyle, applyF, asPx, chan, chanL, cond, condElse, coordToPx, coordToRel, core, defaultLayoutReactivity, filterC, flatten, getFirst, getPx, getRel, keyed, len, lenToPx, lenToRel, listen, listenOnce, listenRef, mapC, mapN, mapT, mulCoord, mulLen, node, nodeT, preserveR, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, safeMapN, safeNodeT, safeTran, splitCoord, supp, toNode, top, tran, tranRef, tree, treePath, walkT };
