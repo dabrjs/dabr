@@ -38,6 +38,8 @@ const mapObj = (f, obj) => mapValuesObj(obj, f);
 
 const concatObj = (...a) => Object.assign({}, ...a);
 
+const copyObj = obj => Object.assign({}, obj);
+
 // Object non-reference equality
 
 const isEqual = (o1, o2) => {
@@ -150,7 +152,7 @@ const mkNode = target => new Proxy(target, { set, get });
 const get = (target, prop) =>
     prop == 'target' ? target : target[prop];
 
-const set = (target, prop, value) => {
+const set = (target, prop, value, receiver) => {
     if (prop == 'val') {
         // Node networks care about value equality. Different from
         // channels, if the value is the same nothing happens.
@@ -783,34 +785,109 @@ const splitCoord = ([x, y]) => [
 
 const asPx = ([x, y]) => [px(x), px(y)];
 
+const copyCoord = ([x, y]) => [copyLen(x), copyLen(y)];
+
+const copyLen = l => (l.rel ? copyObj(l) : l);
+
 const scrollRef = {};
 
 const nodes = {
+    // fullSize2: ({ elem, rect, tree, node: fs }) => {
+    //     console.log('fsssssssssssss', fs.target.trans);
+    //     window.fs = fs;
+    //     const t = tran([tree.children], () => {
+    //         const chs = tree.children.val;
+    //         let fsAbs = [0, 0];
+    //         const limits = chs.map(tCh => {
+    //             const r = tCh.val;
+    //             const lay = r.layout;
+    //             const limit = node();
+    //             tran([lay.posAbs, lay.sizAbs], () => {
+    //                 const limitAbs = vectorPlus(
+    //                     lay.posAbs.val,
+    //                     lay.sizAbs.val
+    //                 );
+    //                 const limitLen = addCoord(
+    //                     lay.pos.val,
+    //                     lay.siz.val
+    //                 );
+    //                 limit.val = [limitAbs, limitLen];
+    //             });
+    //             return limit;
+    //         });
+    //         tran(limits, () => {
+    //             const auxAbs = fsAbs;
+    //             const aux = fs.val || [0, 0];
+    //             limits.forEach(limit => {
+    //                 const [limitAbs, limitLen] = limit.val;
+    //                 if (limitAbs[0] > fsAbs[0]) {
+    //                     auxAbs[0] = limitAbs[0];
+    //                     aux[0] = limitLen[0];
+    //                 }
+    //                 if (limitAbs[1] > fsAbs[1]) {
+    //                     auxAbs[1] = limitAbs[1];
+    //                     aux[1] = limitLen[1];
+    //                 }
+    //             });
+    //             fsAbs = auxAbs;
+    //             console.log(
+    //                 'alalalaallal',
+    //                 aux[0],
+    //                 aux[1],
+    //                 fs.target.changed
+    //             );
+    //             fs.val = aux;
+    //             console.log(
+    //                 'alalalaallal',
+    //                 aux[0],
+    //                 aux[1],
+    //                 fs.target.changed
+    //             );
+    //         });
+    //     });
+    //     window.fs2 = fs;
+    //     tran([fs], () => {
+    //         console.log(
+    //             'rofl',
+    //             fs.val[0],
+    //             fs.val[1],
+    //             fs.target.val[0],
+    //             fs.target.val[1],
+    //             fs.target.changed
+    //         );
+    //     });
+    //     rect.renderTrans.add(t);
+    // },
     fullSize: ({ elem, rect, tree, node: fs }) => {
-        const t = tran([tree.children], () => {
+        const t = safeTran([tree.children], () => {
             const chs = tree.children.val;
             let fsAbs = [0, 0];
-            chs.forEach(t => {
-                const r = t.val;
+            chs.forEach(tCh => {
+                const r = tCh.val;
                 const lay = r.layout;
-                tranRef(t, [lay.posAbs, lay.sizAbs], () => {
+                safeTran([lay.posAbs, lay.sizAbs], () => {
                     const limitAbs = vectorPlus(
                         lay.posAbs.val,
                         lay.sizAbs.val
                     );
                     const limit = addCoord(lay.pos.val, lay.siz.val);
-                    const auxAbs = fsAbs;
-                    const aux = fs.val || [0, 0];
+                    let auxAbs = copyCoord(fsAbs);
+                    const aux = copyCoord(fs.val) || [0, 0];
                     if (limitAbs[0] > fsAbs[0]) {
-                        auxAbs[0] = limitAbs[0];
-                        aux[0] = limit[0];
+                        auxAbs[0] = copyLen(limitAbs[0]);
+                        aux[0] = copyLen(limit[0]);
                     }
                     if (limitAbs[1] > fsAbs[1]) {
-                        auxAbs[1] = limitAbs[1];
-                        aux[1] = limit[1];
+                        auxAbs[1] = copyLen(limitAbs[1]);
+                        aux[1] = copyLen(limit[1]);
                     }
-                    fsAbs = auxAbs;
-                    fs.val = aux;
+                    if (
+                        limitAbs[0] > fsAbs[0] ||
+                        limitAbs[1] > fsAbs[1]
+                    ) {
+                        fsAbs = copyCoord(auxAbs);
+                        fs.val = copyCoord(aux);
+                    }
                 });
             });
         });
@@ -860,7 +937,7 @@ const nodes = {
 var addNodes = mapT((r, t) => {
     if (r.nodes) {
         iterate(r.nodes, ([name, val]) => {
-            const nd = toNode(val);
+            const nd = name == 'fullSize' ? val : toNode(val);
             const ans = nodes[name];
             if (ans) {
                 ans({
@@ -908,28 +985,51 @@ const addLayoutTriggers = (layout, elem, rect, parLayout) => {
 
     const posN = layout.pos;
     const posT = tran([posN, maxN], () => {
-        const pos = posN.val;
-        const max = maxN.val;
-        elem.style.left = isNotNull(pos[0].rel)
-            ? `calc(${(pos[0].rel * 100) / max[0]}% + ${pos[0].px}px)`
-            : `${(pos[0] * 100) / max[0]}%`;
-        elem.style.top = isNotNull(pos[1].rel)
-            ? `calc(${(pos[1].rel * 100) / max[1]}% + ${pos[1].px}px)`
-            : `${(pos[1] * 100) / max[1]}%`;
+        const [posRel, posPx] = splitCoord(posN.val);
+        const [maxRel, maxPx] = splitCoord(maxN.val);
+
+        elem.style.left = `calc(${(posRel[0] * 100) /
+            maxRel[0]}% + ${posPx[0] -
+            (posRel[0] * maxPx[0]) / maxRel[0]}px)`;
+        elem.style.top = `calc(${(posRel[1] * 100) /
+            maxRel[1]}% + ${posPx[1] -
+            (posRel[1] * maxPx[1]) / maxRel[1]}px)`;
     });
+    // const posT = tran([posN, maxN], () => {
+    //     const pos = posN.val;
+    //     const max = maxN.val;
+    //     console.log('mamammamam', pos, max);
+    //     elem.style.left = isNotNull(pos[0].rel)
+    //         ? `calc(${(pos[0].rel * 100) / max[0]}% + ${pos[0].px}px)`
+    //         : `${(pos[0] * 100) / max[0]}%`;
+    //     elem.style.top = isNotNull(pos[1].rel)
+    //         ? `calc(${(pos[1].rel * 100) / max[1]}% + ${pos[1].px}px)`
+    //         : `${(pos[1] * 100) / max[1]}%`;
+    //     console.log('styles', elem.style.left, elem.style.top);
+    // });
     rect.renderTrans.add(posT);
 
     const sizN = layout.siz;
     const sizT = tran([sizN, maxN], () => {
-        const siz = sizN.val;
-        const max = maxN.val;
-        elem.style.width = isNotNull(siz[0].rel)
-            ? `calc(${(siz[0].rel * 100) / max[0]}% + ${siz[0].px}px)`
-            : `${(siz[0] * 100) / max[0]}%`;
-        elem.style.height = isNotNull(siz[1].rel)
-            ? `calc(${(siz[1].rel * 100) / max[1]}% + ${siz[1].px}px)`
-            : `${(siz[1] * 100) / max[1]}%`;
+        const [sizRel, sizPx] = splitCoord(sizN.val);
+        const [maxRel, maxPx] = splitCoord(maxN.val);
+        elem.style.width = `calc(${(sizRel[0] * 100) /
+            maxRel[0]}% + ${sizPx[0] -
+            (sizRel[0] * maxPx[0]) / maxRel[0]}px)`;
+        elem.style.height = `calc(${(sizRel[1] * 100) /
+            maxRel[1]}% + ${sizPx[1] -
+            (sizRel[1] * maxPx[1]) / maxRel[1]}px)`;
     });
+    // const sizT = tran([sizN, maxN], () => {
+    //     const siz = sizN.val;
+    //     const max = maxN.val;
+    //     elem.style.width = isNotNull(siz[0].rel)
+    //         ? `calc(${(siz[0].rel * 100) / max[0]}% + ${siz[0].px}px)`
+    //         : `${(siz[0] * 100) / max[0]}%`;
+    //     elem.style.height = isNotNull(siz[1].rel)
+    //         ? `calc(${(siz[1].rel * 100) / max[1]}% + ${siz[1].px}px)`
+    //         : `${(siz[1] * 100) / max[1]}%`;
+    // });
     rect.renderTrans.add(sizT);
 };
 
@@ -950,7 +1050,7 @@ const defaultLayoutReactivity = (
         (pos, siz, pMax, pPosAbs, pSizAbs) => {
             const [posRel, posPx] = splitCoord(pos);
             const [sizRel, sizPx] = splitCoord(siz);
-            const [maxRel, maxPx] = splitCoord(pMax); //
+            const [maxRel, maxPx] = splitCoord(pMax);
             // Some simple math
             let a = [
                 (pSizAbs[0] - maxPx[0]) / maxRel[0],
@@ -2076,4 +2176,4 @@ const addDabrCss = elem => {
     elem.style['overflow-x'] = 'scroll';
 };
 
-export { Dummy, Entry, Rect, RectT, Supp, SuppT, T, Tree, addChans, addCoord, addEvent, addLayoutTriggers, addLen, addNodes, addStyle, applyF, asPx, chan, chanL, cond, condElse, coordToPx, coordToRel, core, defaultLayoutReactivity, filterC, flatten, getFirst, getPx, getRel, keyed, len, lenToPx, lenToRel, listen, listenOnce, listenRef, mapC, mapN, mapT, mulCoord, mulLen, node, nodeT, preserveR, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, safeMapN, safeNodeT, safeTran, splitCoord, supp, toNode, top, tran, tranRef, tree, treePath, walkT };
+export { Dummy, Entry, Rect, RectT, Supp, SuppT, T, Tree, addChans, addCoord, addEvent, addLayoutTriggers, addLen, addNodes, addStyle, applyF, asPx, chan, chanL, cond, condElse, coordToPx, coordToRel, copyCoord, copyLen, core, defaultLayoutReactivity, filterC, flatten, getFirst, getPx, getRel, keyed, len, lenToPx, lenToRel, listen, listenOnce, listenRef, mapC, mapN, mapT, mulCoord, mulLen, node, nodeT, preserveR, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, safeMapN, safeNodeT, safeTran, splitCoord, supp, toNode, top, tran, tranRef, tree, treePath, walkT };

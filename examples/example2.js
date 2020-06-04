@@ -380,8 +380,8 @@ const rects = () =>
         rect([30, 100]),
         rect([px(30), px(100)]),
         rect([px(30), px(100)]),
-        lolo(),
         rect([px(30), px(100)]),
+        lolo(),
         rect([px(30), px(100)]),
         rect([px(30), px(100)]),
         rect([px(30), px(100)])
@@ -410,26 +410,26 @@ const lili = Tree(
     mapN([rects()], vertical)
 );
 
-const z = node();
-
-tran([z], () => {
-    console.log('z', z);
-});
-const lulu = Tree(
-    Rect({
-        layout: {
-            pos: [0, 0],
-            siz: [70, 70]
-        },
-        nodes: {
-            fullSize: z
-        },
-        style: {
-            color: randomColor()
-        }
-    }),
-    mapN([rects()], vertical)
-);
+// const z = node([100, 100]);
+// tran([z], () => {
+//     console.log('z', z.val[0], z.val[1]);
+// });
+// window.z = z;
+// const lulu = Tree(
+//     Rect({
+//         layout: {
+//             pos: [0, 0],
+//             siz: [70, 70]
+//         },
+//         nodes: {
+//             fullSize: z
+//         },
+//         style: {
+//             color: randomColor()
+//         }
+//     }),
+//     mapN([rects()], vertical)
+// );
 
 const rect2 = RectT(
     {
@@ -455,8 +455,8 @@ const rect2 = RectT(
         rect: rect3(), //top(proportional(node([1, 1])))(rect3())
         lele: lele,
         lili: lili,
-        lolo: lolo(),
-        lulu: lulu
+        lolo: lolo()
+        //lulu: lulu
     })
 );
 

@@ -17,7 +17,7 @@ const mkNode = target => new Proxy(target, { set, get });
 const get = (target, prop) =>
     prop == 'target' ? target : target[prop];
 
-const set = (target, prop, value) => {
+const set = (target, prop, value, receiver) => {
     if (prop == 'val') {
         // Node networks care about value equality. Different from
         // channels, if the value is the same nothing happens.

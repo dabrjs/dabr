@@ -1,4 +1,4 @@
-import { isNotNull } from './utils/index.js';
+import { isNotNull, copyObj } from './utils/index.js';
 import { mapN } from './node.js';
 
 export const len = (rel, px) => ({
@@ -71,3 +71,7 @@ export const splitCoord = ([x, y]) => [
 ];
 
 export const asPx = ([x, y]) => [px(x), px(y)];
+
+export const copyCoord = ([x, y]) => [copyLen(x), copyLen(y)];
+
+export const copyLen = l => (l.rel ? copyObj(l) : l);

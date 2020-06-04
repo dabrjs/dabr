@@ -1,4 +1,4 @@
-import { tran, mapN } from '../node.js';
+import { tran, mapN, safeTran } from '../node.js';
 import { addCoord } from '../coord.js';
 import { Dummy } from '../rect.js';
 import { RectT } from '../rect-tree.js';
@@ -6,7 +6,7 @@ import { RectT } from '../rect-tree.js';
 export const vertical = listOfRectTrees => {
     listOfRectTrees.reduce(
         (t1, t2) => {
-            tran([t1.val.layout.siz, t1.val.layout.pos], () => {
+            tran([t1.val.layout.pos, t1.val.layout.siz], () => {
                 const pos = t1.val.layout.pos.val;
                 const siz = t1.val.layout.siz.val;
                 const y = addCoord(pos, siz);
@@ -27,7 +27,7 @@ export const vertical = listOfRectTrees => {
 export const horizontal = listOfRectTrees => {
     listOfRectTrees.reduce(
         (t1, t2) => {
-            tran([t1.val.layout.siz], () => {
+            safeTran([t1.val.layout.pos, t1.val.layout.siz], () => {
                 const pos = t1.val.layout.pos.val;
                 const siz = t1.val.layout.siz.val;
                 const x = addCoord(pos, siz);

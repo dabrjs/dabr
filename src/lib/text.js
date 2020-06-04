@@ -12,7 +12,6 @@ import { core, top } from '../rect-tree.js';
 import { Dummy, Supp } from '../rect.js';
 import { Tree, treePath, Entry } from '../tree.js';
 import { asPx, lenToPx, px } from '../coord.js';
-import { flexY } from './flex.js';
 import { preserveR } from '../rect.js';
 
 export const text = textNode => rect => {

@@ -1,5 +1,12 @@
-import { tran, tranRef, toNode, mapN } from '../node.js';
-import { iterate, vectorPlus } from '../utils/index.js';
+import {
+    node,
+    tran,
+    safeTran,
+    tranRef,
+    toNode,
+    mapN
+} from '../node.js';
+import { iterate, vectorPlus, copyArray } from '../utils/index.js';
 import { mapT } from '../tree.js';
 import { addEvent } from '../rect.js';
 import {
@@ -7,38 +14,111 @@ import {
     mulCoord,
     addCoord,
     coordToRel,
-    coordToPx
+    coordToPx,
+    copyCoord,
+    copyLen
 } from '../coord.js';
 
 const scrollSizeRef = {};
 const scrollRef = {};
 
 const nodes = {
+    // fullSize2: ({ elem, rect, tree, node: fs }) => {
+    //     console.log('fsssssssssssss', fs.target.trans);
+    //     window.fs = fs;
+    //     const t = tran([tree.children], () => {
+    //         const chs = tree.children.val;
+    //         let fsAbs = [0, 0];
+    //         const limits = chs.map(tCh => {
+    //             const r = tCh.val;
+    //             const lay = r.layout;
+    //             const limit = node();
+    //             tran([lay.posAbs, lay.sizAbs], () => {
+    //                 const limitAbs = vectorPlus(
+    //                     lay.posAbs.val,
+    //                     lay.sizAbs.val
+    //                 );
+    //                 const limitLen = addCoord(
+    //                     lay.pos.val,
+    //                     lay.siz.val
+    //                 );
+    //                 limit.val = [limitAbs, limitLen];
+    //             });
+    //             return limit;
+    //         });
+    //         tran(limits, () => {
+    //             const auxAbs = fsAbs;
+    //             const aux = fs.val || [0, 0];
+    //             limits.forEach(limit => {
+    //                 const [limitAbs, limitLen] = limit.val;
+    //                 if (limitAbs[0] > fsAbs[0]) {
+    //                     auxAbs[0] = limitAbs[0];
+    //                     aux[0] = limitLen[0];
+    //                 }
+    //                 if (limitAbs[1] > fsAbs[1]) {
+    //                     auxAbs[1] = limitAbs[1];
+    //                     aux[1] = limitLen[1];
+    //                 }
+    //             });
+    //             fsAbs = auxAbs;
+    //             console.log(
+    //                 'alalalaallal',
+    //                 aux[0],
+    //                 aux[1],
+    //                 fs.target.changed
+    //             );
+    //             fs.val = aux;
+    //             console.log(
+    //                 'alalalaallal',
+    //                 aux[0],
+    //                 aux[1],
+    //                 fs.target.changed
+    //             );
+    //         });
+    //     });
+    //     window.fs2 = fs;
+    //     tran([fs], () => {
+    //         console.log(
+    //             'rofl',
+    //             fs.val[0],
+    //             fs.val[1],
+    //             fs.target.val[0],
+    //             fs.target.val[1],
+    //             fs.target.changed
+    //         );
+    //     });
+    //     rect.renderTrans.add(t);
+    // },
     fullSize: ({ elem, rect, tree, node: fs }) => {
-        const t = tran([tree.children], () => {
+        const t = safeTran([tree.children], () => {
             const chs = tree.children.val;
             let fsAbs = [0, 0];
-            chs.forEach(t => {
-                const r = t.val;
+            chs.forEach(tCh => {
+                const r = tCh.val;
                 const lay = r.layout;
-                tranRef(t, [lay.posAbs, lay.sizAbs], () => {
+                safeTran([lay.posAbs, lay.sizAbs], () => {
                     const limitAbs = vectorPlus(
                         lay.posAbs.val,
                         lay.sizAbs.val
                     );
                     const limit = addCoord(lay.pos.val, lay.siz.val);
-                    const auxAbs = fsAbs;
-                    const aux = fs.val || [0, 0];
+                    let auxAbs = copyCoord(fsAbs);
+                    const aux = copyCoord(fs.val) || [0, 0];
                     if (limitAbs[0] > fsAbs[0]) {
-                        auxAbs[0] = limitAbs[0];
-                        aux[0] = limit[0];
+                        auxAbs[0] = copyLen(limitAbs[0]);
+                        aux[0] = copyLen(limit[0]);
                     }
                     if (limitAbs[1] > fsAbs[1]) {
-                        auxAbs[1] = limitAbs[1];
-                        aux[1] = limit[1];
+                        auxAbs[1] = copyLen(limitAbs[1]);
+                        aux[1] = copyLen(limit[1]);
                     }
-                    fsAbs = auxAbs;
-                    fs.val = aux;
+                    if (
+                        limitAbs[0] > fsAbs[0] ||
+                        limitAbs[1] > fsAbs[1]
+                    ) {
+                        fsAbs = copyCoord(auxAbs);
+                        fs.val = copyCoord(aux);
+                    }
                 });
             });
         });
@@ -88,7 +168,7 @@ const nodes = {
 export default mapT((r, t) => {
     if (r.nodes) {
         iterate(r.nodes, ([name, val]) => {
-            const nd = toNode(val);
+            const nd = name == 'fullSize' ? val : toNode(val);
             const ans = nodes[name];
             if (ans) {
                 ans({
