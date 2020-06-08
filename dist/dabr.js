@@ -815,107 +815,99 @@ const copyLen = l => (l.rel ? copyObj(l) : l);
 const scrollRef = {};
 
 const nodes = {
-    // fullSize2: ({ elem, rect, tree, node: fs }) => {
-    //     console.log('fsssssssssssss', fs.target.trans);
-    //     window.fs = fs;
-    //     const t = tran([tree.children], () => {
-    //         const chs = tree.children.val;
-    //         let fsAbs = [0, 0];
-    //         const limits = chs.map(tCh => {
-    //             const r = tCh.val;
-    //             const lay = r.layout;
-    //             const limit = node();
-    //             tran([lay.posAbs, lay.sizAbs], () => {
-    //                 const limitAbs = vectorPlus(
-    //                     lay.posAbs.val,
-    //                     lay.sizAbs.val
-    //                 );
-    //                 const limitLen = addCoord(
-    //                     lay.pos.val,
-    //                     lay.siz.val
-    //                 );
-    //                 limit.val = [limitAbs, limitLen];
-    //             });
-    //             return limit;
-    //         });
-    //         tran(limits, () => {
-    //             const auxAbs = fsAbs;
-    //             const aux = fs.val || [0, 0];
-    //             limits.forEach(limit => {
-    //                 const [limitAbs, limitLen] = limit.val;
-    //                 if (limitAbs[0] > fsAbs[0]) {
-    //                     auxAbs[0] = limitAbs[0];
-    //                     aux[0] = limitLen[0];
-    //                 }
-    //                 if (limitAbs[1] > fsAbs[1]) {
-    //                     auxAbs[1] = limitAbs[1];
-    //                     aux[1] = limitLen[1];
-    //                 }
-    //             });
-    //             fsAbs = auxAbs;
-    //             console.log(
-    //                 'alalalaallal',
-    //                 aux[0],
-    //                 aux[1],
-    //                 fs.target.changed
-    //             );
-    //             fs.val = aux;
-    //             console.log(
-    //                 'alalalaallal',
-    //                 aux[0],
-    //                 aux[1],
-    //                 fs.target.changed
-    //             );
-    //         });
-    //     });
-    //     window.fs2 = fs;
-    //     tran([fs], () => {
-    //         console.log(
-    //             'rofl',
-    //             fs.val[0],
-    //             fs.val[1],
-    //             fs.target.val[0],
-    //             fs.target.val[1],
-    //             fs.target.changed
-    //         );
-    //     });
-    //     rect.renderTrans.add(t);
-    // },
     fullSize: ({ elem, rect, tree, node: fs }) => {
-        const t = safeTran([tree.children], () => {
+        const t = tran([tree.children], () => {
             const chs = tree.children.val;
-            let fsAbs = [0, 0];
-            chs.forEach(tCh => {
+            const limits = chs.map(tCh => {
                 const r = tCh.val;
                 const lay = r.layout;
-                safeTran([lay.posAbs, lay.sizAbs], () => {
+                const limit = node();
+                tran([lay.posAbs, lay.sizAbs], () => {
                     const limitAbs = vectorPlus(
                         lay.posAbs.val,
                         lay.sizAbs.val
                     );
-                    const limit = addCoord(lay.pos.val, lay.siz.val);
-                    let auxAbs = copyCoord(fsAbs);
-                    const aux = copyCoord(fs.val) || [0, 0];
-                    if (limitAbs[0] > fsAbs[0]) {
-                        auxAbs[0] = copyLen(limitAbs[0]);
-                        aux[0] = copyLen(limit[0]);
-                    }
-                    if (limitAbs[1] > fsAbs[1]) {
-                        auxAbs[1] = copyLen(limitAbs[1]);
-                        aux[1] = copyLen(limit[1]);
-                    }
-                    if (
-                        limitAbs[0] > fsAbs[0] ||
-                        limitAbs[1] > fsAbs[1]
-                    ) {
-                        fsAbs = copyCoord(auxAbs);
-                        fs.val = copyCoord(aux);
-                    }
+                    const limitLen = addCoord(
+                        lay.pos.val,
+                        lay.siz.val
+                    );
+                    limit.val = [limitAbs, limitLen];
                 });
+                return limit;
+            });
+            safeTran(limits, () => {
+                fs.val = copyCoord(
+                    limits
+                        .map(l => l.val)
+                        .reduce((l1, l2) => {
+                            const [l1abs, l1len] = l1;
+                            const [l2abs, l2len] = l2;
+                            const [x1, y1] = l1abs;
+                            const [xl1, yl1] = l1len;
+                            const [x2, y2] = l2abs;
+                            const [xl2, yl2] = l2len;
+                            return [
+                                x1 > x2 ? [x1, xl1] : [x2, xl2],
+                                y1 > y2 ? [y1, yl1] : [y2, yl2]
+                            ];
+                        })[1]
+                );
             });
         });
         rect.renderTrans.add(t);
     },
+    // console.log(
+    //     lay.pos.val,
+    //     '+',
+    //     lay.siz.val,
+    //     '=',
+    //     limit,
+    //     '; ',
+    //     lay.posAbs.val,
+    //     '+',
+    //     lay.sizAbs.val,
+    //     '=',
+    //     limitAbs,
+    //     '; fs = ',
+    //     aux,
+    //     '; fsAbs = ',
+    //     fsAbs
+    // );
+    // fullSize: ({ elem, rect, tree, node: fs }) => {
+    //     const t = safeTran([tree.children], () => {
+    //         const chs = tree.children.val;
+    //         let fsAbs = [0, 0];
+    //         chs.forEach(tCh => {
+    //             const lay = tCh.val.layout;
+    //             safeTran([lay.posAbs, lay.sizAbs], () => {
+    //                 const limitAbs = vectorPlus(
+    //                     lay.posAbs.val,
+    //                     lay.sizAbs.val
+    //                 );
+    //                 const limit = addCoord(lay.pos.val, lay.siz.val);
+    //                 let auxAbs = copyCoord(fsAbs);
+    //                 const aux = fs.val ? copyCoord(fs.val) : [0, 0];
+    //                 window.la = fs;
+    //                 if (limitAbs[0] > fsAbs[0]) {
+    //                     auxAbs[0] = copyLen(limitAbs[0]);
+    //                     aux[0] = copyLen(limit[0]);
+    //                 }
+    //                 if (limitAbs[1] > fsAbs[1]) {
+    //                     auxAbs[1] = copyLen(limitAbs[1]);
+    //                     aux[1] = copyLen(limit[1]);
+    //                 }
+    //                 if (
+    //                     limitAbs[0] > fsAbs[0] ||
+    //                     limitAbs[1] > fsAbs[1]
+    //                 ) {
+    //                     fsAbs = copyCoord(auxAbs);
+    //                     fs.val = copyCoord(aux);
+    //                 }
+    //             });
+    //         });
+    //     });
+    //     rect.renderTrans.add(t);
+    // },
     scrollAbs: ({ elem, rect, node: scroll }) => {
         addEvent(rect, 'scroll', () => {
             scroll.val = [elem.scrollLeft, elem.scrollTop];
@@ -1005,18 +997,25 @@ const top = f => tree => Tree(f(tree.val), tree.children);
 // Add render transitions related to layout (positioning)
 const addLayoutTriggers = (layout, elem, rect, parLayout) => {
     const maxN = parLayout.max;
+    const pSizN = parLayout.sizAbs;
 
     const posN = layout.pos;
-    const posT = tran([posN, maxN], () => {
+    const posT = tran([posN, maxN, pSizN], () => {
         const [posRel, posPx] = splitCoord(posN.val);
         const [maxRel, maxPx] = splitCoord(maxN.val);
+        const pSiz = pSizN.val;
 
         elem.style.left = `calc(${(posRel[0] * 100) /
-            maxRel[0]}% + ${posPx[0] -
-            (posRel[0] * maxPx[0]) / maxRel[0]}px)`;
+            ((maxPx[0] * 100) / pSiz[0] + maxRel[0])}% + ${
+            posPx[0]
+        }px)`;
+        // elem.style.top = `calc(${(posRel[1] * 100) /
+        //     maxRel[1]}% + ${posPx[1] -
+        //     (posRel[1] * maxPx[1]) / maxRel[1]}px)`;
         elem.style.top = `calc(${(posRel[1] * 100) /
-            maxRel[1]}% + ${posPx[1] -
-            (posRel[1] * maxPx[1]) / maxRel[1]}px)`;
+            ((maxPx[1] * 100) / pSiz[1] + maxRel[1])}% + ${
+            posPx[1]
+        }px)`;
     });
     // const posT = tran([posN, maxN], () => {
     //     const pos = posN.val;
@@ -1033,15 +1032,25 @@ const addLayoutTriggers = (layout, elem, rect, parLayout) => {
     rect.renderTrans.add(posT);
 
     const sizN = layout.siz;
-    const sizT = tran([sizN, maxN], () => {
+    const sizT = tran([sizN, maxN, pSizN], () => {
         const [sizRel, sizPx] = splitCoord(sizN.val);
         const [maxRel, maxPx] = splitCoord(maxN.val);
+        const pSiz = pSizN.val;
+
         elem.style.width = `calc(${(sizRel[0] * 100) /
-            maxRel[0]}% + ${sizPx[0] -
-            (sizRel[0] * maxPx[0]) / maxRel[0]}px)`;
+            ((maxPx[0] * 100) / pSiz[0] + maxRel[0])}% + ${
+            sizPx[0]
+        }px)`;
         elem.style.height = `calc(${(sizRel[1] * 100) /
-            maxRel[1]}% + ${sizPx[1] -
-            (sizRel[1] * maxPx[1]) / maxRel[1]}px)`;
+            ((maxPx[1] * 100) / pSiz[1] + maxRel[1])}% + ${
+            sizPx[1]
+        }px)`;
+        // elem.style.width = `calc(${(sizRel[0] * 100) /
+        //     maxRel[0]}% + ${sizPx[0] -
+        //     (sizRel[0] * maxPx[0]) / maxRel[0]}px)`;
+        // elem.style.height = `calc(${(sizRel[1] * 100) /
+        //     maxRel[1]}% + ${sizPx[1] -
+        //     (sizRel[1] * maxPx[1]) / maxRel[1]}px)`;
     });
     // const sizT = tran([sizN, maxN], () => {
     //     const siz = sizN.val;
@@ -1075,21 +1084,34 @@ const defaultLayoutReactivity = (
             const [sizRel, sizPx] = splitCoord(siz);
             const [maxRel, maxPx] = splitCoord(pMax);
             // Some simple math
+            // let a = [
+            //     (pSizAbs[0] - maxPx[0]) / maxRel[0],
+            //     (pSizAbs[1] - maxPx[1]) / maxRel[1]
+            // ];
             let a = [
-                (pSizAbs[0] - maxPx[0]) / maxRel[0],
-                (pSizAbs[1] - maxPx[1]) / maxRel[1]
+                pSizAbs[0] /
+                    ((maxPx[0] * 100) / pSizAbs[0] + maxRel[0]),
+                pSizAbs[1] /
+                    ((maxPx[1] * 100) / pSizAbs[1] + maxRel[1])
             ];
             let sizAbs = [sizRel[0] * a[0], sizRel[1] * a[1]];
             let posAbs = [
                 posRel[0] * a[0] + pPosAbs[0],
                 posRel[1] * a[1] + pPosAbs[1]
             ];
-            // let a = [pSizAbs[0] / pMax[0], pSizAbs[1] / pMax[1]];
-            // let sizAbs = [sizRel[0] * a[0], sizRel[1] * a[1]];
-            // let posAbs = [
-            //     posRel[0] * a[0] + pPosAbs[0],
-            //     posRel[1] * a[1] + pPosAbs[1]
-            // ];
+            // console.log(
+            //     'gagaa',
+            //     posRel,
+            //     posPx,
+            //     sizRel,
+            //     sizPx,
+            //     maxRel,
+            //     maxPx,
+            //     posAbs,
+            //     sizAbs,
+            //     pPosAbs,
+            //     pSizAbs
+            // );
             posAbsN.val = vectorPlus(posAbs, posPx);
             sizAbsN.val = vectorPlus(sizAbs, sizPx);
         }
@@ -2952,7 +2974,7 @@ const flexY = rect => {
     const siz = mapN([s, rect.layout.siz], ([, y], [x]) => [x, y]);
     const max = mapN([s, rect.layout.max], ([, y], [x]) => [x, y]);
     window.ga = s;
-    const r = preserveR(rect, {
+    return preserveR(rect, {
         layout: {
             siz,
             max
@@ -2961,7 +2983,6 @@ const flexY = rect => {
             fullSize: s
         }
     });
-    return r;
 };
 
 export { Dummy, EXPONENTIAL, Entry, FLIP, LINEAR, QUADRATIC, Rect, RectT, Supp, SuppT, T, Tree, addChans, addCoord, addEvent, addLayoutTriggers, addLen, addNodes, addStyle, applyF, asPx, border, chan, chanL, cond, condElse, container, coordToPx, coordToRel, copyCoord, copyLen, core, defaultLayoutReactivity, filterC, flatten, flex, flexX, flexY, getFirst, getPx, getRel, hashNode, horizontal, horizontalSpace, keyed, len, lenToPx, lenToRel, line, linesC, linesL, linesR, linesTemplate, listen, listenOnce, listenRef, mapC, mapN, mapT, mulCoord, mulLen, node, nodeT, paragraph, paragraphMin, preserveR, proportional, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, safeMapN, safeNodeT, safeTran, scrollbar, space, splitCoord, stopTimed, supp, switcher, text, timed, toNode, top, tran, tranRef, tree, treePath, vertical, verticalSpace, walkT };

@@ -410,26 +410,63 @@ const lili = Tree(
     mapN([rects()], vertical)
 );
 
-// const z = node([100, 100]);
-// tran([z], () => {
-//     console.log('z', z.val[0], z.val[1]);
-// });
-// window.z = z;
-// const lulu = Tree(
-//     Rect({
-//         layout: {
-//             pos: [0, 0],
-//             siz: [70, 70]
-//         },
-//         nodes: {
-//             fullSize: z
-//         },
-//         style: {
-//             color: randomColor()
-//         }
-//     }),
-//     mapN([rects()], vertical)
-// );
+const ll = () => {
+    const child1 = linesC([
+        node({
+            family: 'inkut',
+            content: 'Título'
+        })
+    ])(
+        Rect({
+            layout: {
+                pos: [0, 0],
+                siz: [100, 30]
+            }
+        })
+    );
+    const child2 = Tree(
+        paragraph(
+            node({
+                family: 'inkut',
+                content:
+                    'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur id lorem vitae purus venenatis iaculis. Etiam pharetra ligula elit, sit amet interdum eros vestibulum a. Integer pretium id odio a iaculis. Nullam id nunc interdum sem varius malesuada. Suspendisse cursus lacinia vulputate. Sed at est scelerisque, iaculis justo sed, rhoncus erat. Aenean id nisl ac magna scelerisque pretium eu ut tellus. Sed iaculis, est id aliquam consequat, diam nisl egestas libero, vel vehicula nulla ante nec nisl. Cras sed massa non diam molestie fermentum. Quisque aliquet rhoncus sem sed iaculis. \nLorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur id lorem vitae purus venenatis iaculis. Etiam pharetra ligula elit, sit amet interdum eros vestibulum a. Integer pretium id odio a iaculis. Nullam id nunc interdum sem varius malesuada. Suspendisse cursus lacinia vulputate. Sed at est scelerisque, iaculis justo sed, rhoncus erat. Aenean id nisl ac magna scelerisque pretium eu ut tellus. Sed iaculis, est id aliquam consequat, diam nisl egestas libero, vel vehicula nulla ante nec nisl. Cras sed massa non diam molestie fermentum. Quisque aliquet rhoncus sem sed iaculis.'
+            }),
+            Rect({
+                layout: {
+                    pos: [0, 0],
+                    siz: [100, 30]
+                }
+            })
+        )
+    );
+    const { size: ts } = child2.val.data.get(text);
+    const s = child2.val.layout.siz;
+    tran([s, ts], () => {
+        console.log(
+            'new ts value:',
+            s.val[0],
+            s.val[1],
+            ts.val[0],
+            ts.val[1]
+        );
+    });
+    console.log('ch1', child1, 'ch2', child2);
+    const children = vertical([flatten(child1), child2]);
+    return Tree(
+        flexY(
+            Rect({
+                layout: {
+                    pos: [0, 0],
+                    siz: [100, 70]
+                },
+                style: {
+                    color: randomColor()
+                }
+            })
+        ),
+        children
+    );
+};
 
 const rect2 = RectT(
     {
@@ -456,7 +493,6 @@ const rect2 = RectT(
         lele: lele,
         lili: lili,
         lolo: lolo()
-        //lulu: lulu
     })
 );
 
@@ -465,5 +501,7 @@ tran([ss], () => {
     console.log('ssss', ss, ss.val);
 });
 
-console.log('asdasdasd', rect2);
-run(rect2);
+//console.log('asdasdasd', rect2);
+//run(rect2);
+
+run(ll());

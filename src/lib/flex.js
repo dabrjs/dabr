@@ -38,7 +38,7 @@ export const flexY = rect => {
     const siz = mapN([s, rect.layout.siz], ([, y], [x]) => [x, y]);
     const max = mapN([s, rect.layout.max], ([, y], [x]) => [x, y]);
     window.ga = s;
-    const r = preserveR(rect, {
+    return preserveR(rect, {
         layout: {
             siz,
             max
@@ -47,5 +47,4 @@ export const flexY = rect => {
             fullSize: s
         }
     });
-    return r;
 };
