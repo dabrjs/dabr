@@ -16,7 +16,9 @@ import {
     coordToRel,
     coordToPx,
     copyCoord,
-    copyLen
+    copyLen,
+    splitCoord,
+    len
 } from '../coord.js';
 
 const scrollSizeRef = {};
@@ -63,6 +65,21 @@ const nodes = {
             });
         });
         rect.renderTrans.add(t);
+    },
+    fullSizeCor: ({ elem, rect, tree, node: fsc }) => {
+        const fs = node();
+        const res = nodes.fullSize({ elem, rect, tree, node: fs });
+        const siz = rect.layout.sizAbs;
+        const pSiz = rect.inst.par.layout.sizAbs;
+        tran([fs, siz, pSiz], () => {
+            const [[fsrx, fsry], [fspx, fspy]] = splitCoord(fs.val);
+            const [sx, sy] = siz.val;
+            const [psx, psy] = pSiz.val;
+            fsc.val = [
+                len((fsrx * sx) / psx, fspx),
+                len((fsry * sy) / psy, fspy)
+            ];
+        });
     },
     scrollAbs: ({ elem, rect, node: scroll }) => {
         addEvent(rect, 'scroll', () => {

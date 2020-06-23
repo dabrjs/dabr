@@ -411,7 +411,7 @@ const lili = Tree(
 );
 
 const ll = () => {
-    const child1 = linesC([
+    const child1 = linesL([
         node({
             family: 'inkut',
             content: 'Título'
@@ -420,7 +420,7 @@ const ll = () => {
         Rect({
             layout: {
                 pos: [0, 0],
-                siz: [100, 30]
+                siz: [100, 50]
             }
         })
     );

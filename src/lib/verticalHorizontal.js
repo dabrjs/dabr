@@ -10,7 +10,10 @@ export const vertical = listOfRectTrees => {
                 const pos = t1.val.layout.pos.val;
                 const siz = t1.val.layout.siz.val;
                 const y = addCoord(pos, siz);
-                t2.val.layout.pos.val = [0, y[1]];
+                t2.val.layout.pos.val = [
+                    t2.val.layout.pos.val[0],
+                    y[1]
+                ];
             });
             return t2;
         },

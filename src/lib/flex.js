@@ -44,7 +44,7 @@ export const flexY = rect => {
             max
         },
         nodes: {
-            fullSize: s
+            fullSizeCor: s
         }
     });
 };

@@ -833,58 +833,6 @@ const nodes = {
         });
         rect.renderTrans.add(t);
     },
-    // console.log(
-    //     lay.pos.val,
-    //     '+',
-    //     lay.siz.val,
-    //     '=',
-    //     limit,
-    //     '; ',
-    //     lay.posAbs.val,
-    //     '+',
-    //     lay.sizAbs.val,
-    //     '=',
-    //     limitAbs,
-    //     '; fs = ',
-    //     aux,
-    //     '; fsAbs = ',
-    //     fsAbs
-    // );
-    // fullSize: ({ elem, rect, tree, node: fs }) => {
-    //     const t = safeTran([tree.children], () => {
-    //         const chs = tree.children.val;
-    //         let fsAbs = [0, 0];
-    //         chs.forEach(tCh => {
-    //             const lay = tCh.val.layout;
-    //             safeTran([lay.posAbs, lay.sizAbs], () => {
-    //                 const limitAbs = vectorPlus(
-    //                     lay.posAbs.val,
-    //                     lay.sizAbs.val
-    //                 );
-    //                 const limit = addCoord(lay.pos.val, lay.siz.val);
-    //                 let auxAbs = copyCoord(fsAbs);
-    //                 const aux = fs.val ? copyCoord(fs.val) : [0, 0];
-    //                 window.la = fs;
-    //                 if (limitAbs[0] > fsAbs[0]) {
-    //                     auxAbs[0] = copyLen(limitAbs[0]);
-    //                     aux[0] = copyLen(limit[0]);
-    //                 }
-    //                 if (limitAbs[1] > fsAbs[1]) {
-    //                     auxAbs[1] = copyLen(limitAbs[1]);
-    //                     aux[1] = copyLen(limit[1]);
-    //                 }
-    //                 if (
-    //                     limitAbs[0] > fsAbs[0] ||
-    //                     limitAbs[1] > fsAbs[1]
-    //                 ) {
-    //                     fsAbs = copyCoord(auxAbs);
-    //                     fs.val = copyCoord(aux);
-    //                 }
-    //             });
-    //         });
-    //     });
-    //     rect.renderTrans.add(t);
-    // },
     scrollAbs: ({ elem, rect, node: scroll }) => {
         addEvent(rect, 'scroll', () => {
             scroll.val = [elem.scrollLeft, elem.scrollTop];

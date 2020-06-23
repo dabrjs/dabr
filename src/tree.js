@@ -48,7 +48,6 @@ export const mapT = f => (tree, path = []) =>
 export const treePath = (tree, path) => {
     let res = null;
     walkT((t, p) => {
-        console.log('AAAAAAAAAAAAAAAAaaa', t, p);
         if (isEqual(p, path)) {
             res = t;
         }
