@@ -1,4 +1,11 @@
-import { node, tran, removeTran } from './node.js';
+import {
+    node,
+    tran,
+    removeTran,
+    safeTran,
+    safeMapN
+} from './node.js';
+import { isNull, copyArray } from './utils/index.js';
 import {
     addLayoutTriggers,
     defaultLayoutReactivity
@@ -34,8 +41,9 @@ export const runRect = rectT => {
         layout: {
             posAbs: node([0, 0]),
             sizAbs: sizAbs,
-            max: node([100, 100])
+            scale: node([1, 1])
         },
+        flex: false,
         inst: {
             dom: document.body
         }
@@ -57,8 +65,9 @@ export const runRectDOM = (rectT, dom) => {
         layout: {
             posAbs: node([0, 0]),
             sizAbs: sizAbs,
-            max: node([100, 100])
+            scale: node([1, 1])
         },
+        flex: false,
         inst: {
             dom: dom
         }
@@ -76,6 +85,16 @@ export const runRectDOM = (rectT, dom) => {
     return runInside(flatten(rectT), parent);
 };
 
+const findReference = parents => {
+    for (let i = parents.length - 1; i >= 0; i--) {
+        const parent = parents[i];
+        if (!parent.flex) {
+            return parent;
+        }
+    }
+    return undefined;
+};
+
 // Main run function
 const runInside = (rectT, parent) => {
     const rect = rectT.val;
@@ -89,7 +108,6 @@ const runInside = (rectT, parent) => {
         dom: elem,
         par: parent
     };
-
     const lay = rect.layout;
     // Binds rect parameters to actual CSS properties
     addLayoutTriggers(lay, elem, rect, parent.layout);
@@ -97,7 +115,7 @@ const runInside = (rectT, parent) => {
     defaultLayoutReactivity(
         lay.pos,
         lay.siz,
-        parent.layout.max,
+        parent.layout.scale,
         parent.layout.posAbs,
         parent.layout.sizAbs,
         lay.posAbs,

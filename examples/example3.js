@@ -154,7 +154,7 @@ export const cell = () => {
             Rect({
                 layout: {
                     pos: [0, 0],
-                    siz: [flex, 70]
+                    siz: [100, 70]
                 }
             })
         ),

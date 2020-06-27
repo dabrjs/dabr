@@ -13,8 +13,6 @@ import {
     asPx,
     mulCoord,
     addCoord,
-    coordToRel,
-    coordToPx,
     copyCoord,
     copyLen,
     splitCoord,
@@ -70,14 +68,15 @@ const nodes = {
         const fs = node();
         const res = nodes.fullSize({ elem, rect, tree, node: fs });
         const siz = rect.layout.sizAbs;
+        const sca = rect.layout.scale;
         const pSiz = rect.inst.par.layout.sizAbs;
-        tran([fs, siz, pSiz], () => {
+        tran([fs, siz, pSiz, sca], () => {
             const [[fsrx, fsry], [fspx, fspy]] = splitCoord(fs.val);
             const [sx, sy] = siz.val;
             const [psx, psy] = pSiz.val;
             fsc.val = [
-                len((fsrx * sx) / psx, fspx),
-                len((fsry * sy) / psy, fspy)
+                len(((fsrx * sx) / psx) * sca.val[0], fspx),
+                len(((fsry * sy) / psy) * sca.val[1], fspy)
             ];
         });
     },

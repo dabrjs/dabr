@@ -44,7 +44,7 @@ import {
 import {
     text,
     paragraph,
-    paragraphMin,
+    //paragraphMin,
     line,
     linesL,
     linesR,
@@ -124,9 +124,9 @@ const rect1 = (pos, siz) =>
     });
 
 const cl = chan();
-listenOnce([cl], () => {
-    rou.val = 'rect';
-});
+//listenOnce([cl], () => {
+//    rou.val = 'rect';
+//});
 
 const h = chan();
 listen([h], () => {
@@ -142,46 +142,39 @@ window.k = k;
 const ss = node();
 
 const rect3 = () =>
-    RectT(
-        {
+    Tree(
+        Rect({
             layout: {
                 pos: [0, 40],
-                siz: s,
-                max: m
+                siz: s
             },
-            events: { click: h },
             style: {
                 color: randomColor()
-            },
-            nodes: {
-                //fullSize: ss
             }
-        },
+        }),
         [
-            scrollbar(k, m),
-            RectT(
-                {
-                    layout: {
-                        pos: [10, 10],
-                        siz: [80, 80]
-                    },
-                    style: {
-                        color: randomColor()
-                    },
-                    nodes: {
-                        scroll: k
-                    }
-                },
-                Tree(
-                    Rect({
+            scrollbar(
+                RectT(
+                    {
                         layout: {
-                            pos: [50, 50],
-                            siz: [1000, 1000]
+                            pos: [10, 10],
+                            siz: [80, 80]
                         },
                         style: {
-                            color: 'black'
+                            color: randomColor()
                         }
-                    })
+                    },
+                    Tree(
+                        Rect({
+                            layout: {
+                                pos: [50, 50],
+                                siz: [50, 1000]
+                            },
+                            style: {
+                                color: 'black'
+                            }
+                        })
+                    )
                 )
             ),
             Tree(
@@ -191,9 +184,6 @@ const rect3 = () =>
                             pos: [0, 0],
                             siz: [100, 10]
                         }
-                        //style: {
-                        //    color: randomColor()
-                        //}
                     })
                 )
             )
@@ -331,10 +321,7 @@ const sidebar = Rect({
 const structure = Tree(Dummy(), [
     Tree(area([0, 0], [100, 5]), Tree(navbar)),
     Tree(area([0, 5], [15, 95]), Tree(sidebar)),
-    Tree(area([15, 5], [85, 95]), [
-        mainContent,
-        scrollbar(scrolla, max)
-    ])
+    Tree(area([15, 5], [85, 95]), [scrollbar(mainContent)])
 ]);
 
 const lele = RectT(
@@ -402,6 +389,7 @@ const lili = Tree(
                 pos: [0, 0],
                 siz: [70, 70]
             },
+            flex: true,
             style: {
                 color: randomColor()
             }
@@ -501,7 +489,7 @@ tran([ss], () => {
     console.log('ssss', ss, ss.val);
 });
 
-//console.log('asdasdasd', rect2);
-//run(rect2);
+console.log('asdasdasd', rect2);
+run(rect2);
 
-run(ll());
+//run(ll());

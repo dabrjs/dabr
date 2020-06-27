@@ -151,11 +151,11 @@ export const safeMapN = (ns, f, info) =>
 // a 1-way sub-node, that changes when the original node's attribute
 // changes. It is 1-way because changing the sub-node does not change
 // the parent node.
-const subNode = (nd, attr) => mapN([nd], x => x[attr]);
+export const subNode = (nd, attr) => mapN([nd], x => x[attr]);
 
 // Like 'subNode' but with 2-way changes. Changing the sub-node
 // changes the parent node as well
-const subNode2 = (nd, attr) => {
+export const subNode2 = (nd, attr) => {
     const aux = mapN([nd], x => x[attr]);
     tran([aux], () => {
         const val = nd.val;

@@ -236,4 +236,22 @@ const mapN = (ns, f, info) =>
 const safeMapN = (ns, f, info) =>
     safeNodeT(ns, () => f(...ns.map(n => n.val)), info);
 
-export { mapN, node, nodeT, removeTran, safeMapN, safeNodeT, safeTran, toNode, tran, tranRef };
+// If a node carries object information, the subNode function creates
+// a 1-way sub-node, that changes when the original node's attribute
+// changes. It is 1-way because changing the sub-node does not change
+// the parent node.
+const subNode = (nd, attr) => mapN([nd], x => x[attr]);
+
+// Like 'subNode' but with 2-way changes. Changing the sub-node
+// changes the parent node as well
+const subNode2 = (nd, attr) => {
+    const aux = mapN([nd], x => x[attr]);
+    tran([aux], () => {
+        const val = nd.val;
+        val[attr] = aux.val;
+        nd.val = val;
+    });
+    return aux;
+};
+
+export { mapN, node, nodeT, removeTran, safeMapN, safeNodeT, safeTran, subNode, subNode2, toNode, tran, tranRef };

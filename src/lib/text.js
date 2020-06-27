@@ -11,7 +11,7 @@ import { proportional } from './proportional.js';
 import { core, top } from '../rect-tree.js';
 import { Dummy, Supp } from '../rect.js';
 import { Tree, treePath, Entry } from '../tree.js';
-import { asPx, lenToPx, px } from '../coord.js';
+import { asPx, px } from '../coord.js';
 import { preserveR } from '../rect.js';
 
 export const text = textNode => rect => {
@@ -73,24 +73,24 @@ export const paragraph = (textNode, rect) => {
     return res;
 };
 
-export const paragraphMin = (textNode, minHeight, rect) => {
-    const res = text(textNode)(rect);
-    listenOnce([res.init], () => {
-        const lay = res.layout;
-        const pLay = res.inst.par.layout;
-        const { size: textSize } = res.data.get(text);
-        safeMapN(
-            [textSize, lay.siz, minHeight, pLay.sizAbs, pLay.max],
-            (ts, s, mh, psa, pm) => {
-                const mhPx = lenToPx(psa[1], pm[1], mh);
-                const [, th] = ts;
-                const aux = [s[0], th < mhPx ? mh : px(th)];
-                res.layout.siz.val = aux;
-            }
-        );
-    });
-    return res;
-};
+// export const paragraphMin = (textNode, minHeight, rect) => {
+//     const res = text(textNode)(rect);
+//     listenOnce([res.init], () => {
+//         const lay = res.layout;
+//         const pLay = res.inst.par.layout;
+//         const { size: textSize } = res.data.get(text);
+//         safeMapN(
+//             [textSize, lay.siz, minHeight, pLay.sizAbs, pLay.max],
+//             (ts, s, mh, psa, pm) => {
+//                 const mhPx = lenToPx(psa[1], pm[1], mh);
+//                 const [, th] = ts;
+//                 const aux = [s[0], th < mhPx ? mh : px(th)];
+//                 res.layout.siz.val = aux;
+//             }
+//         );
+//     });
+//     return res;
+// };
 
 ////////////////////////////// Lines
 

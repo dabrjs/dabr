@@ -16,6 +16,34 @@ const events = {
         elem.addEventListener('mouseenter', e => {
             channel.put = e;
         });
+    },
+    mouseMove: ({ elem, channel }) => {
+        elem.addEventListener('mousemove', e => {
+            channel.put = e;
+        });
+    },
+    drag: ({ elem, channel }) => {
+        let clicking = false;
+        elem.addEventListener('mousedown', e => {
+            console.log('aAAAAAA');
+            clicking = true;
+            channel.put = e;
+        });
+        elem.addEventListener('mouseup', () => {
+            console.log('BBBBBBBBB');
+            clicking = false;
+            channel.put = false;
+        });
+        elem.addEventListener('mousemove', e => {
+            if (clicking) {
+                channel.put = e;
+            }
+        });
+    },
+    mouseOut: ({ elem, channel }) => {
+        elem.addEventListener('mouseout', e => {
+            channel.put = e;
+        });
     }
 };
 

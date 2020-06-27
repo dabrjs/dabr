@@ -282,6 +282,24 @@ const mapN = (ns, f, info) =>
 const safeMapN = (ns, f, info) =>
     safeNodeT(ns, () => f(...ns.map(n => n.val)), info);
 
+// If a node carries object information, the subNode function creates
+// a 1-way sub-node, that changes when the original node's attribute
+// changes. It is 1-way because changing the sub-node does not change
+// the parent node.
+const subNode = (nd, attr) => mapN([nd], x => x[attr]);
+
+// Like 'subNode' but with 2-way changes. Changing the sub-node
+// changes the parent node as well
+const subNode2 = (nd, attr) => {
+    const aux = mapN([nd], x => x[attr]);
+    tran([aux], () => {
+        const val = nd.val;
+        val[attr] = aux.val;
+        nd.val = val;
+    });
+    return aux;
+};
+
 // A tree of anything in which every children are actually nodes (DABR
 // nodes). You can define children as an array or only 1 element and
 // as a node or not a node but in the end it always becomes a node
@@ -329,7 +347,6 @@ const mapT = f => (tree, path = []) =>
 const treePath = (tree, path) => {
     let res = null;
     walkT((t, p) => {
-        console.log('AAAAAAAAAAAAAAAAaaa', t, p);
         if (isEqual(p, path)) {
             res = t;
         }
@@ -429,6 +446,34 @@ const events = {
     },
     mouseEnter: ({ elem, channel }) => {
         elem.addEventListener('mouseenter', e => {
+            channel.put = e;
+        });
+    },
+    mouseMove: ({ elem, channel }) => {
+        elem.addEventListener('mousemove', e => {
+            channel.put = e;
+        });
+    },
+    drag: ({ elem, channel }) => {
+        let clicking = false;
+        elem.addEventListener('mousedown', e => {
+            console.log('aAAAAAA');
+            clicking = true;
+            channel.put = e;
+        });
+        elem.addEventListener('mouseup', () => {
+            console.log('BBBBBBBBB');
+            clicking = false;
+            channel.put = false;
+        });
+        elem.addEventListener('mousemove', e => {
+            if (clicking) {
+                channel.put = e;
+            }
+        });
+    },
+    mouseOut: ({ elem, channel }) => {
+        elem.addEventListener('mouseout', e => {
             channel.put = e;
         });
     }
@@ -591,15 +636,17 @@ const filterC = (chan, cond) =>
 //     after rect is ran
 //   layout.sizAbs: absolute size in pixels, only initialized
 //     after rect is ran
-//   layout.max: maximum relative lengths for coords,
-//     default is [100,100]
+//   layout.scale: the scale (in x and y) which defined the coords of
+//     inner rects. Default is [1,1]
 //   layout.pos: relative position length. Obligatory in any rect.
 //   layout.siz: relative size length. Obligatory in any rect.
 const Rect = def => {
     const defaultLayout = {
+        pos: node(),
+        siz: node(),
         posAbs: node(),
         sizAbs: node(),
-        max: node([100, 100])
+        scale: node([1, 1])
     };
 
     const defaultRectAttrs = {
@@ -746,37 +793,37 @@ const getPx = l => (isNotNull(l.px) ? l.px : 0);
 
 const getRel = l => (isNotNull(l.rel) ? l.rel : l);
 
-const absToRel = (pSizAbs, pMax, px) =>
-    (px * getRel(pMax)) / (pSizAbs - getPx(pMax));
+// const absToRel = (pSizAbs, pMax, px) =>
+//     (px * getRel(pMax)) / (pSizAbs - getPx(pMax));
 
-const absToPx = (pSizAbs, pMax, rel) =>
-    (rel * (pSizAbs - getPx(pMax))) / getRel(pMax);
+// const absToPx = (pSizAbs, pMax, rel) =>
+//     (rel * (pSizAbs - getPx(pMax))) / getRel(pMax);
 
-const lenToRel = (pSizAbs, pMax, l) => {
-    if (isNotNull(l.rel)) {
-        return l.rel + absToRel(pSizAbs, pMax, l.px);
-    } else {
-        return l;
-    }
-};
+// export const lenToRel = (pSizAbs, pMax, l) => {
+//     if (isNotNull(l.rel)) {
+//         return l.rel + absToRel(pSizAbs, pMax, l.px);
+//     } else {
+//         return l;
+//     }
+// };
 
-const lenToPx = (pSizAbs, pMax, l) => {
-    if (isNotNull(l.rel)) {
-        return l.px + absToPx(pSizAbs, pMax, l.rel);
-    } else {
-        return absToPx(pSizAbs, pMax, l);
-    }
-};
+// export const lenToPx = (pSizAbs, pMax, l) => {
+//     if (isNotNull(l.rel)) {
+//         return l.px + absToPx(pSizAbs, pMax, l.rel);
+//     } else {
+//         return absToPx(pSizAbs, pMax, l);
+//     }
+// };
 
-const coordToRel = ([psX, psY], [pmX, pmY], [cX, cY]) => [
-    lenToRel(psX, pmX, cX),
-    lenToRel(psY, pmY, cY)
-];
+// export const coordToRel = ([psX, psY], [pmX, pmY], [cX, cY]) => [
+//     lenToRel(psX, pmX, cX),
+//     lenToRel(psY, pmY, cY)
+// ];
 
-const coordToPx = ([psX, psY], [pmX, pmY], [cX, cY]) => [
-    lenToPx(psX, pmX, cX),
-    lenToPx(psY, pmY, cY)
-];
+// export const coordToPx = ([psX, psY], [pmX, pmY], [cX, cY]) => [
+//     lenToPx(psX, pmX, cX),
+//     lenToPx(psY, pmY, cY)
+// ];
 
 const splitCoord = ([x, y]) => [
     [getRel(x), getRel(y)],
@@ -832,6 +879,22 @@ const nodes = {
             });
         });
         rect.renderTrans.add(t);
+    },
+    fullSizeCor: ({ elem, rect, tree, node: fsc }) => {
+        const fs = node();
+        const res = nodes.fullSize({ elem, rect, tree, node: fs });
+        const siz = rect.layout.sizAbs;
+        const sca = rect.layout.scale;
+        const pSiz = rect.inst.par.layout.sizAbs;
+        tran([fs, siz, pSiz, sca], () => {
+            const [[fsrx, fsry], [fspx, fspy]] = splitCoord(fs.val);
+            const [sx, sy] = siz.val;
+            const [psx, psy] = pSiz.val;
+            fsc.val = [
+                len(((fsrx * sx) / psx) * sca.val[0], fspx),
+                len(((fsry * sy) / psy) * sca.val[1], fspy)
+            ];
+        });
     },
     scrollAbs: ({ elem, rect, node: scroll }) => {
         addEvent(rect, 'scroll', () => {
@@ -921,72 +984,32 @@ const top = f => tree => Tree(f(tree.val), tree.children);
 
 // Add render transitions related to layout (positioning)
 const addLayoutTriggers = (layout, elem, rect, parLayout) => {
-    const maxN = parLayout.max;
-    const pSizN = parLayout.sizAbs;
+    const scaN = parLayout.scale;
 
     const posN = layout.pos;
-    const posT = tran([posN, maxN, pSizN], () => {
+    const posT = tran([posN, scaN], () => {
         const [posRel, posPx] = splitCoord(posN.val);
-        const [maxRel, maxPx] = splitCoord(maxN.val);
-        const pSiz = pSizN.val;
-
-        elem.style.left = `calc(${(posRel[0] * 100) /
-            ((maxPx[0] * 100) / pSiz[0] + maxRel[0])}% + ${
+        const sca = scaN.val;
+        elem.style.left = `calc(${posRel[0] * sca[0]}% + ${
             posPx[0]
         }px)`;
-        // elem.style.top = `calc(${(posRel[1] * 100) /
-        //     maxRel[1]}% + ${posPx[1] -
-        //     (posRel[1] * maxPx[1]) / maxRel[1]}px)`;
-        elem.style.top = `calc(${(posRel[1] * 100) /
-            ((maxPx[1] * 100) / pSiz[1] + maxRel[1])}% + ${
+        elem.style.top = `calc(${posRel[1] * sca[1]}% + ${
             posPx[1]
         }px)`;
     });
-    // const posT = tran([posN, maxN], () => {
-    //     const pos = posN.val;
-    //     const max = maxN.val;
-    //     console.log('mamammamam', pos, max);
-    //     elem.style.left = isNotNull(pos[0].rel)
-    //         ? `calc(${(pos[0].rel * 100) / max[0]}% + ${pos[0].px}px)`
-    //         : `${(pos[0] * 100) / max[0]}%`;
-    //     elem.style.top = isNotNull(pos[1].rel)
-    //         ? `calc(${(pos[1].rel * 100) / max[1]}% + ${pos[1].px}px)`
-    //         : `${(pos[1] * 100) / max[1]}%`;
-    //     console.log('styles', elem.style.left, elem.style.top);
-    // });
     rect.renderTrans.add(posT);
 
     const sizN = layout.siz;
-    const sizT = tran([sizN, maxN, pSizN], () => {
+    const sizT = tran([sizN, scaN], () => {
         const [sizRel, sizPx] = splitCoord(sizN.val);
-        const [maxRel, maxPx] = splitCoord(maxN.val);
-        const pSiz = pSizN.val;
-
-        elem.style.width = `calc(${(sizRel[0] * 100) /
-            ((maxPx[0] * 100) / pSiz[0] + maxRel[0])}% + ${
+        const sca = scaN.val;
+        elem.style.width = `calc(${sizRel[0] * sca[0]}% + ${
             sizPx[0]
         }px)`;
-        elem.style.height = `calc(${(sizRel[1] * 100) /
-            ((maxPx[1] * 100) / pSiz[1] + maxRel[1])}% + ${
+        elem.style.height = `calc(${sizRel[1] * sca[1]}% + ${
             sizPx[1]
         }px)`;
-        // elem.style.width = `calc(${(sizRel[0] * 100) /
-        //     maxRel[0]}% + ${sizPx[0] -
-        //     (sizRel[0] * maxPx[0]) / maxRel[0]}px)`;
-        // elem.style.height = `calc(${(sizRel[1] * 100) /
-        //     maxRel[1]}% + ${sizPx[1] -
-        //     (sizRel[1] * maxPx[1]) / maxRel[1]}px)`;
     });
-    // const sizT = tran([sizN, maxN], () => {
-    //     const siz = sizN.val;
-    //     const max = maxN.val;
-    //     elem.style.width = isNotNull(siz[0].rel)
-    //         ? `calc(${(siz[0].rel * 100) / max[0]}% + ${siz[0].px}px)`
-    //         : `${(siz[0] * 100) / max[0]}%`;
-    //     elem.style.height = isNotNull(siz[1].rel)
-    //         ? `calc(${(siz[1].rel * 100) / max[1]}% + ${siz[1].px}px)`
-    //         : `${(siz[1] * 100) / max[1]}%`;
-    // });
     rect.renderTrans.add(sizT);
 };
 
@@ -996,47 +1019,26 @@ const addLayoutTriggers = (layout, elem, rect, parLayout) => {
 const defaultLayoutReactivity = (
     posN, // rect's relative position node
     sizN, // rect's relative size node
-    pMaxN, // parent's max node
+    pScaleN, // parent's max node
     pPosAbsN, // parent's absolute position
     pSizAbsN, // parent's absolute size
     posAbsN, // rect's absolute position
     sizAbsN // rect's absolute size
 ) =>
     safeMapN(
-        [posN, sizN, pMaxN, pPosAbsN, pSizAbsN],
-        (pos, siz, pMax, pPosAbs, pSizAbs) => {
+        [posN, sizN, pScaleN, pPosAbsN, pSizAbsN],
+        (pos, siz, pScale, pPosAbs, pSizAbs) => {
             const [posRel, posPx] = splitCoord(pos);
             const [sizRel, sizPx] = splitCoord(siz);
-            const [maxRel, maxPx] = splitCoord(pMax);
-            // Some simple math
-            // let a = [
-            //     (pSizAbs[0] - maxPx[0]) / maxRel[0],
-            //     (pSizAbs[1] - maxPx[1]) / maxRel[1]
-            // ];
             let a = [
-                pSizAbs[0] /
-                    ((maxPx[0] * 100) / pSizAbs[0] + maxRel[0]),
-                pSizAbs[1] /
-                    ((maxPx[1] * 100) / pSizAbs[1] + maxRel[1])
+                (pSizAbs[0] * pScale[0]) / 100,
+                (pSizAbs[1] * pScale[1]) / 100
             ];
             let sizAbs = [sizRel[0] * a[0], sizRel[1] * a[1]];
             let posAbs = [
                 posRel[0] * a[0] + pPosAbs[0],
                 posRel[1] * a[1] + pPosAbs[1]
             ];
-            // console.log(
-            //     'gagaa',
-            //     posRel,
-            //     posPx,
-            //     sizRel,
-            //     sizPx,
-            //     maxRel,
-            //     maxPx,
-            //     posAbs,
-            //     sizAbs,
-            //     pPosAbs,
-            //     pSizAbs
-            // );
             posAbsN.val = vectorPlus(posAbs, posPx);
             sizAbsN.val = vectorPlus(sizAbs, sizPx);
         }
@@ -1992,8 +1994,9 @@ const runRect = rectT => {
         layout: {
             posAbs: node([0, 0]),
             sizAbs: sizAbs,
-            max: node([100, 100])
+            scale: node([1, 1])
         },
+        flex: false,
         inst: {
             dom: document.body
         }
@@ -2015,8 +2018,9 @@ const runRectDOM = (rectT, dom) => {
         layout: {
             posAbs: node([0, 0]),
             sizAbs: sizAbs,
-            max: node([100, 100])
+            scale: node([1, 1])
         },
+        flex: false,
         inst: {
             dom: dom
         }
@@ -2047,7 +2051,6 @@ const runInside = (rectT, parent) => {
         dom: elem,
         par: parent
     };
-
     const lay = rect.layout;
     // Binds rect parameters to actual CSS properties
     addLayoutTriggers(lay, elem, rect, parent.layout);
@@ -2055,7 +2058,7 @@ const runInside = (rectT, parent) => {
     defaultLayoutReactivity(
         lay.pos,
         lay.siz,
-        parent.layout.max,
+        parent.layout.scale,
         parent.layout.posAbs,
         parent.layout.sizAbs,
         lay.posAbs,
@@ -2146,4 +2149,4 @@ const addDabrCss = elem => {
     elem.style['overflow-x'] = 'scroll';
 };
 
-export { Dummy, Entry, Rect, RectT, Supp, SuppT, T, Tree, addChans, addCoord, addEvent, addLayoutTriggers, addLen, addNodes, addStyle, applyF, asPx, chan, chanL, cond, condElse, coordToPx, coordToRel, copyCoord, copyLen, core, defaultLayoutReactivity, filterC, flatten, getFirst, getPx, getRel, keyed, len, lenToPx, lenToRel, listen, listenOnce, listenRef, mapC, mapN, mapT, mulCoord, mulLen, node, nodeT, preserveR, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, safeMapN, safeNodeT, safeTran, splitCoord, supp, toNode, top, tran, tranRef, tree, treePath, walkT };
+export { Dummy, Entry, Rect, RectT, Supp, SuppT, T, Tree, addChans, addCoord, addEvent, addLayoutTriggers, addLen, addNodes, addStyle, applyF, asPx, chan, chanL, cond, condElse, copyCoord, copyLen, core, defaultLayoutReactivity, filterC, flatten, getFirst, getPx, getRel, keyed, len, listen, listenOnce, listenRef, mapC, mapN, mapT, mulCoord, mulLen, node, nodeT, preserveR, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, safeMapN, safeNodeT, safeTran, splitCoord, subNode, subNode2, supp, toNode, top, tran, tranRef, tree, treePath, walkT };

@@ -45,15 +45,17 @@ import { chan } from './channel.js';
 //     after rect is ran
 //   layout.sizAbs: absolute size in pixels, only initialized
 //     after rect is ran
-//   layout.max: maximum relative lengths for coords,
-//     default is [100,100]
+//   layout.scale: the scale (in x and y) which defined the coords of
+//     inner rects. Default is [1,1]
 //   layout.pos: relative position length. Obligatory in any rect.
 //   layout.siz: relative size length. Obligatory in any rect.
 export const Rect = def => {
     const defaultLayout = {
+        pos: node(),
+        siz: node(),
         posAbs: node(),
         sizAbs: node(),
-        max: node([100, 100])
+        scale: node([1, 1])
     };
 
     const defaultRectAttrs = {

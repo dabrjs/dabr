@@ -1,50 +1,65 @@
-import { node, tran, tranRef, mapN } from '../node.js';
+import { isNull, isNotNull } from '../utils/index.js';
+import { node, tran, tranRef, mapN, safeMapN } from '../node.js';
 import { listenOnce } from '../channel.js';
 import { keyed, preserveR } from '../rect.js';
-import { px, asPx, addCoord, coordToRel } from '../coord.js';
+import { px, len, asPx, addCoord } from '../coord.js';
 import { Tree } from '../tree.js';
 import { RectT } from '../rect-tree.js';
+import {
+    setParentScale,
+    setParentScaleX,
+    setParentScaleY
+} from '../scale.js';
 
 export const flex = rect => {
     const s = node([100, 100]);
-    return preserveR(rect, {
-        layout: {
-            siz: s,
-            max: s
-        },
-        nodes: {
-            fullSize: s
-        }
+    listenOnce([rect.init], () => {
+        rect.inst.dom.style['overflow'] = 'hidden';
     });
+    return setParentScale(
+        preserveR(rect, {
+            layout: {
+                siz: s
+            },
+            nodes: {
+                fullSize: s
+            }
+        })
+    );
 };
 
 export const flexX = rect => {
     const s = node([100, 100]);
     const siz = mapN([s, rect.layout.siz], ([x], [, y]) => [x, y]);
-    const max = mapN([s, rect.layout.max], ([x], [, y]) => [x, y]);
-    return preserveR(rect, {
-        layout: {
-            siz,
-            max
-        },
-        nodes: {
-            fullSize: s
-        }
+    listenOnce([rect.init], () => {
+        rect.inst.dom.style['overflow'] = 'hidden';
     });
+    return setParentScaleX(
+        preserveR(rect, {
+            layout: {
+                siz
+            },
+            nodes: {
+                fullSize: s
+            }
+        })
+    );
 };
 
 export const flexY = rect => {
     const s = node([100, 100]);
     const siz = mapN([s, rect.layout.siz], ([, y], [x]) => [x, y]);
-    const max = mapN([s, rect.layout.max], ([, y], [x]) => [x, y]);
-    window.ga = s;
-    return preserveR(rect, {
-        layout: {
-            siz,
-            max
-        },
-        nodes: {
-            fullSizeCor: s
-        }
+    listenOnce([rect.init], () => {
+        rect.inst.dom.style['overflow'] = 'hidden';
     });
+    return setParentScaleY(
+        preserveR(rect, {
+            layout: {
+                siz
+            },
+            nodes: {
+                fullSize: s
+            }
+        })
+    );
 };

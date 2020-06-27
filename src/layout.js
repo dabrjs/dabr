@@ -1,75 +1,35 @@
 import { vectorPlus, isNotNull } from './utils/index.js';
-import { tran, safeMapN } from './node.js';
+import { tran, mapN, safeMapN } from './node.js';
 import { splitCoord } from './coord.js';
 
 // Add render transitions related to layout (positioning)
 export const addLayoutTriggers = (layout, elem, rect, parLayout) => {
-    const maxN = parLayout.max;
-    const pSizN = parLayout.sizAbs;
+    const scaN = parLayout.scale;
 
     const posN = layout.pos;
-    const posT = tran([posN, maxN, pSizN], () => {
+    const posT = tran([posN, scaN], () => {
         const [posRel, posPx] = splitCoord(posN.val);
-        const [maxRel, maxPx] = splitCoord(maxN.val);
-        const pSiz = pSizN.val;
-
-        elem.style.left = `calc(${(posRel[0] * 100) /
-            ((maxPx[0] * 100) / pSiz[0] + maxRel[0])}% + ${
+        const sca = scaN.val;
+        elem.style.left = `calc(${posRel[0] * sca[0]}% + ${
             posPx[0]
         }px)`;
-        // elem.style.top = `calc(${(posRel[1] * 100) /
-        //     maxRel[1]}% + ${posPx[1] -
-        //     (posRel[1] * maxPx[1]) / maxRel[1]}px)`;
-        elem.style.top = `calc(${(posRel[1] * 100) /
-            ((maxPx[1] * 100) / pSiz[1] + maxRel[1])}% + ${
+        elem.style.top = `calc(${posRel[1] * sca[1]}% + ${
             posPx[1]
         }px)`;
     });
-    // const posT = tran([posN, maxN], () => {
-    //     const pos = posN.val;
-    //     const max = maxN.val;
-    //     console.log('mamammamam', pos, max);
-    //     elem.style.left = isNotNull(pos[0].rel)
-    //         ? `calc(${(pos[0].rel * 100) / max[0]}% + ${pos[0].px}px)`
-    //         : `${(pos[0] * 100) / max[0]}%`;
-    //     elem.style.top = isNotNull(pos[1].rel)
-    //         ? `calc(${(pos[1].rel * 100) / max[1]}% + ${pos[1].px}px)`
-    //         : `${(pos[1] * 100) / max[1]}%`;
-    //     console.log('styles', elem.style.left, elem.style.top);
-    // });
     rect.renderTrans.add(posT);
 
     const sizN = layout.siz;
-    const sizT = tran([sizN, maxN, pSizN], () => {
+    const sizT = tran([sizN, scaN], () => {
         const [sizRel, sizPx] = splitCoord(sizN.val);
-        const [maxRel, maxPx] = splitCoord(maxN.val);
-        const pSiz = pSizN.val;
-
-        elem.style.width = `calc(${(sizRel[0] * 100) /
-            ((maxPx[0] * 100) / pSiz[0] + maxRel[0])}% + ${
+        const sca = scaN.val;
+        elem.style.width = `calc(${sizRel[0] * sca[0]}% + ${
             sizPx[0]
         }px)`;
-        elem.style.height = `calc(${(sizRel[1] * 100) /
-            ((maxPx[1] * 100) / pSiz[1] + maxRel[1])}% + ${
+        elem.style.height = `calc(${sizRel[1] * sca[1]}% + ${
             sizPx[1]
         }px)`;
-        // elem.style.width = `calc(${(sizRel[0] * 100) /
-        //     maxRel[0]}% + ${sizPx[0] -
-        //     (sizRel[0] * maxPx[0]) / maxRel[0]}px)`;
-        // elem.style.height = `calc(${(sizRel[1] * 100) /
-        //     maxRel[1]}% + ${sizPx[1] -
-        //     (sizRel[1] * maxPx[1]) / maxRel[1]}px)`;
     });
-    // const sizT = tran([sizN, maxN], () => {
-    //     const siz = sizN.val;
-    //     const max = maxN.val;
-    //     elem.style.width = isNotNull(siz[0].rel)
-    //         ? `calc(${(siz[0].rel * 100) / max[0]}% + ${siz[0].px}px)`
-    //         : `${(siz[0] * 100) / max[0]}%`;
-    //     elem.style.height = isNotNull(siz[1].rel)
-    //         ? `calc(${(siz[1].rel * 100) / max[1]}% + ${siz[1].px}px)`
-    //         : `${(siz[1] * 100) / max[1]}%`;
-    // });
     rect.renderTrans.add(sizT);
 };
 
@@ -79,47 +39,26 @@ export const addLayoutTriggers = (layout, elem, rect, parLayout) => {
 export const defaultLayoutReactivity = (
     posN, // rect's relative position node
     sizN, // rect's relative size node
-    pMaxN, // parent's max node
+    pScaleN, // parent's max node
     pPosAbsN, // parent's absolute position
     pSizAbsN, // parent's absolute size
     posAbsN, // rect's absolute position
     sizAbsN // rect's absolute size
 ) =>
     safeMapN(
-        [posN, sizN, pMaxN, pPosAbsN, pSizAbsN],
-        (pos, siz, pMax, pPosAbs, pSizAbs) => {
+        [posN, sizN, pScaleN, pPosAbsN, pSizAbsN],
+        (pos, siz, pScale, pPosAbs, pSizAbs) => {
             const [posRel, posPx] = splitCoord(pos);
             const [sizRel, sizPx] = splitCoord(siz);
-            const [maxRel, maxPx] = splitCoord(pMax);
-            // Some simple math
-            // let a = [
-            //     (pSizAbs[0] - maxPx[0]) / maxRel[0],
-            //     (pSizAbs[1] - maxPx[1]) / maxRel[1]
-            // ];
             let a = [
-                pSizAbs[0] /
-                    ((maxPx[0] * 100) / pSizAbs[0] + maxRel[0]),
-                pSizAbs[1] /
-                    ((maxPx[1] * 100) / pSizAbs[1] + maxRel[1])
+                (pSizAbs[0] * pScale[0]) / 100,
+                (pSizAbs[1] * pScale[1]) / 100
             ];
             let sizAbs = [sizRel[0] * a[0], sizRel[1] * a[1]];
             let posAbs = [
                 posRel[0] * a[0] + pPosAbs[0],
                 posRel[1] * a[1] + pPosAbs[1]
             ];
-            // console.log(
-            //     'gagaa',
-            //     posRel,
-            //     posPx,
-            //     sizRel,
-            //     sizPx,
-            //     maxRel,
-            //     maxPx,
-            //     posAbs,
-            //     sizAbs,
-            //     pPosAbs,
-            //     pSizAbs
-            // );
             posAbsN.val = vectorPlus(posAbs, posPx);
             sizAbsN.val = vectorPlus(sizAbs, sizPx);
         }
