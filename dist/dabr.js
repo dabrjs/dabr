@@ -2657,9 +2657,7 @@ const scrollbar = tree => {
     const drag = chan();
     const over = chan();
     const out = chan();
-    let dragging = false;
     const innerSiz = node([50, 5]);
-    let oldVal = null;
     const click = chan();
     //listen([click], changePos(click));
     // listen([click], () => {
@@ -2674,50 +2672,43 @@ const scrollbar = tree => {
     //         ];
     //     }
     // });
-    listen([drag], () => {
-        const val = drag.get;
-        if (
-            !oldVal ||
-            !(
-                oldVal.clientY - val.clientY <
-                oldVal.layerY - val.layerY
-            )
-        ) {
-            if (val == false) {
-                dragging = false;
-                innerPos.val = [50, innerPos.val[1]];
-                innerSiz.val = [50, 5];
-            } else {
-                dragging = true;
-                innerPos.val = [0, innerPos.val[1]];
-                innerSiz.val = [100, 5];
-                console.log(
-                    'lmao',
-                    val,
-                    val.layerY,
-                    outterSizAbs.val,
-                    (val.layerY / outterSizAbs.val[1]) * 100
-                );
-                let res = (val.layerY / outterSizAbs.val[1]) * 100;
-                if (res < 1) res = 1;
-                if (res > 100) res = 100;
-                oldVal = val;
-                timed(scroll, { finalVal: [0, res], totalTime: 100 });
-            }
-        }
-    });
-    listen([over], () => {
-        if (!dragging) {
-            innerPos.val = [0, innerPos.val[1]];
-            innerSiz.val = [100, 5];
-        }
-    });
-    listen([out], () => {
-        if (!dragging) {
-            innerPos.val = [50, innerPos.val[1]];
-            innerSiz.val = [50, 5];
-        }
-    });
+    // listen([drag], () => {
+    //     const val = drag.get;
+    //     if (
+    //         !oldVal ||
+    //         !(
+    //             oldVal.clientY - val.clientY <
+    //             oldVal.layerY - val.layerY
+    //         )
+    //     ) {
+    //         if (val == false) {
+    //             dragging = false;
+    //             innerPos.val = [50, innerPos.val[1]];
+    //             innerSiz.val = [50, 5];
+    //         } else {
+    //             dragging = true;
+    //             innerPos.val = [0, innerPos.val[1]];
+    //             innerSiz.val = [100, 5];
+    //             let res = (val.layerY / outterSizAbs.val[1]) * 100;
+    //             if (res < 1) res = 1;
+    //             if (res > 100) res = 100;
+    //             oldVal = val;
+    //             timed(scroll, { finalVal: [0, res], totalTime: 100 });
+    //         }
+    //     }
+    // });
+    // listen([over], () => {
+    //     if (!dragging) {
+    //         innerPos.val = [0, innerPos.val[1]];
+    //         innerSiz.val = [100, 5];
+    //     }
+    // });
+    // listen([out], () => {
+    //     if (!dragging) {
+    //         innerPos.val = [50, innerPos.val[1]];
+    //         innerSiz.val = [50, 5];
+    //     }
+    // });
     const sbar = Tree(
         Rect({
             layout: {
@@ -2725,10 +2716,10 @@ const scrollbar = tree => {
                 siz: [len(0, 10), 100],
                 sizAbs: outterSizAbs
             },
-            events: {
-                click,
-                drag
-            }
+            // events: {
+            //     click,
+            //     drag
+            // }
         }),
         RectT({
             layout: {
@@ -2738,10 +2729,10 @@ const scrollbar = tree => {
             style: {
                 color: 'orange'
             },
-            events: {
-                mouseOver: over,
-                mouseOut: out
-            }
+            // events: {
+            //     mouseOver: over,
+            //     mouseOut: out
+            // }
         })
     );
     return Tree(Dummy(), [Tree(res, tree.children), sbar]);
