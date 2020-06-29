@@ -78,7 +78,11 @@ export const scrollbar = tree => {
     const innerPos = node([50, 0]);
     tran([scroll], () => {
         const h = scroll.val[1];
-        innerPos.val = [innerPos.val[0], (h * 95) / 100];
+        const ans = (h * 95) / 100;
+        console.log(';))))))))))', h, ans);
+        if (ans >= 0) {
+            innerPos.val = [innerPos.val[0], ans];
+        }
     });
 
     const outterPos = node([0, 0]);

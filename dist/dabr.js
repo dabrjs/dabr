@@ -931,10 +931,17 @@ const nodes = {
         rect.renderTrans.add(t);
     },
     scroll: ({ elem, rect, node: scroll }) => {
-        const limN = mapN([rect.layout.sizAbs], siz => [
-            elem.scrollWidth - Math.round(siz[0]),
-            elem.scrollHeight - Math.round(siz[1])
-        ]);
+        const limN = mapN([rect.layout.sizAbs], siz => {
+            console.log('kakaka', siz, elem, elem.scrollHeight);
+            const w = elem.scrollWidth;
+            const h = elem.scrollHeight;
+            const sw = Math.round(siz[0]);
+            const sh = Math.round(siz[1]);
+            return [
+                w - sw >= 0 ? w - sw : 0,
+                h - sh >= 0 ? h - sh : 0
+            ];
+        });
         addEvent(rect, 'scroll', () => {
             const lim = limN.val;
             scroll.val = [
@@ -2318,6 +2325,7 @@ const switcher = (route, routeRectMap) => {
             destroy
         };
     });
+    const siz = node([100,100]);
     tran([route], () => {
         const newRoute = route.val;
         children.val = iterate(routeMap, ([rou, val]) => {
@@ -2332,8 +2340,16 @@ const switcher = (route, routeRectMap) => {
                 return rectT;
             }
         }).filter(isNotNull);
+        siz.val = [{ rel: 100, px: 0.01 }, { rel: 100, px: 0}];
+        siz.val = [100,100];
+        console.log('aaaaaaaaaa', siz.val);
     });
-    return children;
+    return Tree(Rect({
+        layout: {
+            pos: [0,0],
+            siz
+        }
+    }), children);
 };
 
 // Time functions for animation control from 0 to 1
@@ -2648,7 +2664,11 @@ const scrollbar = tree => {
     const innerPos = node([50, 0]);
     tran([scroll], () => {
         const h = scroll.val[1];
-        innerPos.val = [innerPos.val[0], (h * 95) / 100];
+        const ans = (h * 95) / 100;
+        console.log(';))))))))))', h, ans);
+        if (ans >= 0) {
+            innerPos.val = [innerPos.val[0], ans];
+        }
     });
 
     const outterPos = node([0, 0]);

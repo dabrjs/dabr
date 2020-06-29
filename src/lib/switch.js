@@ -1,5 +1,7 @@
 import { mapValuesObj, isNotNull, iterate } from '../utils/index.js';
 import { node, tran } from '../node.js';
+import { Rect, Dummy } from '../rect.js';
+import { Tree } from '../tree.js';
 import { top } from '../rect-tree.js';
 import { container } from './container.js';
 
@@ -15,6 +17,7 @@ const switcher = (route, routeRectMap) => {
             destroy
         };
     });
+    const siz = node([100,100]);
     tran([route], () => {
         const newRoute = route.val;
         children.val = iterate(routeMap, ([rou, val]) => {
@@ -29,8 +32,16 @@ const switcher = (route, routeRectMap) => {
                 return rectT;
             }
         }).filter(isNotNull);
+        // hack to fiz some problems when switch happens
+        siz.val = [{ rel: 100, px: 0.01 }, 100];
+        siz.val = [100,100];
     });
-    return children;
+    return Tree(Rect({
+        layout: {
+            pos: [0,0],
+            siz
+        }
+    }), children);
 };
 
 export { switcher };

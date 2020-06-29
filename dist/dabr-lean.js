@@ -908,10 +908,17 @@ const nodes = {
         rect.renderTrans.add(t);
     },
     scroll: ({ elem, rect, node: scroll }) => {
-        const limN = mapN([rect.layout.sizAbs], siz => [
-            elem.scrollWidth - Math.round(siz[0]),
-            elem.scrollHeight - Math.round(siz[1])
-        ]);
+        const limN = mapN([rect.layout.sizAbs], siz => {
+            console.log('kakaka', siz, elem, elem.scrollHeight);
+            const w = elem.scrollWidth;
+            const h = elem.scrollHeight;
+            const sw = Math.round(siz[0]);
+            const sh = Math.round(siz[1]);
+            return [
+                w - sw >= 0 ? w - sw : 0,
+                h - sh >= 0 ? h - sh : 0
+            ];
+        });
         addEvent(rect, 'scroll', () => {
             const lim = limN.val;
             scroll.val = [
