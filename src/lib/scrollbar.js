@@ -151,7 +151,7 @@ export const scrollbar = tree => {
                 pos: [len(100, -10), 0],
                 siz: [len(0, 10), 100],
                 sizAbs: outterSizAbs
-            },
+            }
             // events: {
             //     click,
             //     drag
@@ -164,7 +164,7 @@ export const scrollbar = tree => {
             },
             style: {
                 color: 'orange'
-            },
+            }
             // events: {
             //     mouseOver: over,
             //     mouseOut: out

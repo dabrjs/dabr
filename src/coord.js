@@ -18,7 +18,7 @@ export const addLen = (r1, r2) => {
 };
 
 export const mulLen = (s, r) => {
-    const aux = r.rel ? r : { px: 0, rel: r };
+    const aux = isNotNull(r.rel) ? r : { px: 0, rel: r };
     return len(aux.rel * s, aux.px * s);
 };
 

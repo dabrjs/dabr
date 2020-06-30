@@ -778,7 +778,7 @@ const addLen = (r1, r2) => {
 };
 
 const mulLen = (s, r) => {
-    const aux = r.rel ? r : { px: 0, rel: r };
+    const aux = isNotNull(r.rel) ? r : { px: 0, rel: r };
     return len(aux.rel * s, aux.px * s);
 };
 
@@ -909,7 +909,6 @@ const nodes = {
     },
     scroll: ({ elem, rect, node: scroll }) => {
         const limN = mapN([rect.layout.sizAbs], siz => {
-            console.log('kakaka', siz, elem, elem.scrollHeight);
             const w = elem.scrollWidth;
             const h = elem.scrollHeight;
             const sw = Math.round(siz[0]);

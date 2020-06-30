@@ -801,7 +801,7 @@ const addLen = (r1, r2) => {
 };
 
 const mulLen = (s, r) => {
-    const aux = r.rel ? r : { px: 0, rel: r };
+    const aux = isNotNull(r.rel) ? r : { px: 0, rel: r };
     return len(aux.rel * s, aux.px * s);
 };
 
@@ -932,7 +932,6 @@ const nodes = {
     },
     scroll: ({ elem, rect, node: scroll }) => {
         const limN = mapN([rect.layout.sizAbs], siz => {
-            console.log('kakaka', siz, elem, elem.scrollHeight);
             const w = elem.scrollWidth;
             const h = elem.scrollHeight;
             const sw = Math.round(siz[0]);
@@ -2325,7 +2324,7 @@ const switcher = (route, routeRectMap) => {
             destroy
         };
     });
-    const siz = node([100,100]);
+    const siz = node([100, 100]);
     tran([route], () => {
         const newRoute = route.val;
         children.val = iterate(routeMap, ([rou, val]) => {
@@ -2340,16 +2339,19 @@ const switcher = (route, routeRectMap) => {
                 return rectT;
             }
         }).filter(isNotNull);
-        siz.val = [{ rel: 100, px: 0.01 }, { rel: 100, px: 0}];
-        siz.val = [100,100];
-        console.log('aaaaaaaaaa', siz.val);
+        // hack to fiz some problems when switch happens
+        siz.val = [{ rel: 100, px: 0.01 }, 100];
+        siz.val = [100, 100];
     });
-    return Tree(Rect({
-        layout: {
-            pos: [0,0],
-            siz
-        }
-    }), children);
+    return Tree(
+        Rect({
+            layout: {
+                pos: [0, 0],
+                siz
+            }
+        }),
+        children
+    );
 };
 
 // Time functions for animation control from 0 to 1
@@ -2735,7 +2737,7 @@ const scrollbar = tree => {
                 pos: [len(100, -10), 0],
                 siz: [len(0, 10), 100],
                 sizAbs: outterSizAbs
-            },
+            }
             // events: {
             //     click,
             //     drag
@@ -2748,7 +2750,7 @@ const scrollbar = tree => {
             },
             style: {
                 color: 'orange'
-            },
+            }
             // events: {
             //     mouseOver: over,
             //     mouseOut: out
