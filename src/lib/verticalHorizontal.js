@@ -34,7 +34,10 @@ export const horizontal = listOfRectTrees => {
                 const pos = t1.val.layout.pos.val;
                 const siz = t1.val.layout.siz.val;
                 const x = addCoord(pos, siz);
-                t2.val.layout.pos.val = [x[0], 0];
+                t2.val.layout.pos.val = [
+                    x[0],
+                    t2.val.layout.pos.val[1]
+                ];
             });
             return t2;
         },

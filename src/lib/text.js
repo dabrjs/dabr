@@ -148,7 +148,7 @@ export const linesTemplate = justify => textNs => rect => {
             ...{ size: fontSize.val, whiteSpace: 'nowrap' }
         }));
         const stepSiz = (i / n) * 100;
-        const siz = mapN([sizes[i], prop], ([w, h], [pw, ph]) => [
+        const siz = safeMapN([sizes[i], prop], ([w, h], [pw, ph]) => [
             (w / pw) * 100,
             (1 / n) * 100
         ]);
