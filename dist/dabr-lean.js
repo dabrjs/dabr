@@ -932,8 +932,6 @@ const len = (rel, px) => ({
     px
 });
 
-//export const rel = r => len(r, 0);
-
 const px = p => len(0, p);
 
 const addLen = (r1, r2) => {
@@ -958,38 +956,6 @@ const mulCoord = (s, c) => [mulLen(s, c[0]), mulLen(s, c[1])];
 const getPx = l => (isNotNull(l.px) ? l.px : 0);
 
 const getRel = l => (isNotNull(l.rel) ? l.rel : l);
-
-// const absToRel = (pSizAbs, pMax, px) =>
-//     (px * getRel(pMax)) / (pSizAbs - getPx(pMax));
-
-// const absToPx = (pSizAbs, pMax, rel) =>
-//     (rel * (pSizAbs - getPx(pMax))) / getRel(pMax);
-
-// export const lenToRel = (pSizAbs, pMax, l) => {
-//     if (isNotNull(l.rel)) {
-//         return l.rel + absToRel(pSizAbs, pMax, l.px);
-//     } else {
-//         return l;
-//     }
-// };
-
-// export const lenToPx = (pSizAbs, pMax, l) => {
-//     if (isNotNull(l.rel)) {
-//         return l.px + absToPx(pSizAbs, pMax, l.rel);
-//     } else {
-//         return absToPx(pSizAbs, pMax, l);
-//     }
-// };
-
-// export const coordToRel = ([psX, psY], [pmX, pmY], [cX, cY]) => [
-//     lenToRel(psX, pmX, cX),
-//     lenToRel(psY, pmY, cY)
-// ];
-
-// export const coordToPx = ([psX, psY], [pmX, pmY], [cX, cY]) => [
-//     lenToPx(psX, pmX, cX),
-//     lenToPx(psY, pmY, cY)
-// ];
 
 const splitCoord = ([x, y]) => [
     [getRel(x), getRel(y)],

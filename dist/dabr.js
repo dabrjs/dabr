@@ -955,8 +955,6 @@ const len = (rel, px) => ({
     px
 });
 
-//export const rel = r => len(r, 0);
-
 const px = p => len(0, p);
 
 const addLen = (r1, r2) => {
@@ -981,38 +979,6 @@ const mulCoord = (s, c) => [mulLen(s, c[0]), mulLen(s, c[1])];
 const getPx = l => (isNotNull(l.px) ? l.px : 0);
 
 const getRel = l => (isNotNull(l.rel) ? l.rel : l);
-
-// const absToRel = (pSizAbs, pMax, px) =>
-//     (px * getRel(pMax)) / (pSizAbs - getPx(pMax));
-
-// const absToPx = (pSizAbs, pMax, rel) =>
-//     (rel * (pSizAbs - getPx(pMax))) / getRel(pMax);
-
-// export const lenToRel = (pSizAbs, pMax, l) => {
-//     if (isNotNull(l.rel)) {
-//         return l.rel + absToRel(pSizAbs, pMax, l.px);
-//     } else {
-//         return l;
-//     }
-// };
-
-// export const lenToPx = (pSizAbs, pMax, l) => {
-//     if (isNotNull(l.rel)) {
-//         return l.px + absToPx(pSizAbs, pMax, l.rel);
-//     } else {
-//         return absToPx(pSizAbs, pMax, l);
-//     }
-// };
-
-// export const coordToRel = ([psX, psY], [pmX, pmY], [cX, cY]) => [
-//     lenToRel(psX, pmX, cX),
-//     lenToRel(psY, pmY, cY)
-// ];
-
-// export const coordToPx = ([psX, psY], [pmX, pmY], [cX, cY]) => [
-//     lenToPx(psX, pmX, cX),
-//     lenToPx(psY, pmY, cY)
-// ];
 
 const splitCoord = ([x, y]) => [
     [getRel(x), getRel(y)],
@@ -2349,50 +2315,6 @@ const addDabrCss = elem => {
     elem.style['overflow-x'] = 'scroll';
 };
 
-// export const border = b => rect => {
-//     const innerPos = node();
-//     const innerSiz = node();
-//     const color = mapN([b], ({ color }) => color);
-//     const width = mapN([b], ({ width }) => width);
-//     tran([width], () => {
-//         const w = width.val;
-//         innerPos.val = [px(w), px(w)]; //len([0, 0], [w, w]);
-//         innerSiz.val = [len(100, -2 * w), len(100, -2 * w)]; //len([100, 100], [-2 * w, -2 * w]);
-//     });
-//     return Tree(
-//         Supp({
-//             layout: {
-//                 pos: rect.layout.pos,
-//                 siz: rect.layout.siz
-//             },
-//             data: keyed(border, {
-//                 node: b,
-//                 outter: true,
-//                 inner: false
-//             }),
-//             style: {
-//                 color: color
-//             }
-//         }),
-//         [
-//             Tree(
-//                 preserveR(rect, {
-//                     layout: {
-//                         pos: innerPos,
-//                         siz: innerSiz
-//                     },
-//                     data: keyed(border, {
-//                         node: b,
-//                         inner: true,
-//                         outter: false
-//                     })
-//                 }),
-//                 Entry
-//             )
-//         ]
-//     );
-// };
-
 const border = (b, tree) => {
     const rect = tree.val;
     const innerPos = node();
@@ -2439,17 +2361,6 @@ const border = (b, tree) => {
 
 const _border = b => tree => border(b, tree);
 
-// export const container = show => rect =>
-//     Tree(
-//         Dummy({
-//             data: keyed(container, show),
-//             style: {
-//                 show
-//             }
-//         }),
-//         [Tree(rect, Entry)]
-//     );
-
 const container = (show, tree) =>
     Tree(
         Dummy({
@@ -2495,8 +2406,8 @@ const proportional = (prop, tree) => {
     });
     const newRect = preserveR(rect, {
         layout: {
-            pos: innerPos, //[0, 0],
-            siz: innerSiz //[100, 100]
+            pos: innerPos,
+            siz: innerSiz
         }
     });
     tran([prop, sizAbs], () => {
@@ -2551,48 +2462,6 @@ const calcProportional = (prop, siz) => {
 
     return [offset, s];
 };
-
-// const switcher = (route, routeRectMap) => {
-//     const children = node();
-//     const routeMap = mapValuesObj(routeRectMap, val => {
-//         const destroy = val.destroy ? val.destroy : false;
-//         const show = node(false);
-//         const rectT = top(container(show))(val.content || val);
-//         return {
-//             show,
-//             rectT,
-//             destroy
-//         };
-//     });
-//     const siz = node([100, 100]);
-//     tran([route], () => {
-//         const newRoute = route.val;
-//         children.val = iterate(routeMap, ([rou, val]) => {
-//             const { show, rectT, destroy } = val;
-//             if (rou == newRoute) {
-//                 show.val = true;
-//                 return rectT;
-//             } else if (destroy) {
-//                 return null;
-//             } else {
-//                 show.val = false;
-//                 return rectT;
-//             }
-//         }).filter(isNotNull);
-//         // hack to fiz some problems when switch happens
-//         siz.val = [{ rel: 100, px: 0.01 }, 100];
-//         siz.val = [100, 100];
-//     });
-//     return Tree(
-//         Rect({
-//             layout: {
-//                 pos: [0, 0],
-//                 siz
-//             }
-//         }),
-//         children
-//     );
-// };
 
 const switcher = (route, routeRectMap) => {
     const children = node();
@@ -3176,57 +3045,6 @@ const getSizeOf16pxText = ({
     return [w, h];
 };
 
-// export const linesTemplate = justify => textNs => rect => {
-//     const prop = node();
-//     const sizes = [];
-//     textNs.forEach((_, i) => {
-//         sizes[i] = node();
-//     });
-//     tran(textNs, () => {
-//         const sizs = textNs.map(tn => getSizeOf16pxText(tn.val));
-//         sizs.forEach((siz, i) => {
-//             sizes[i].val = siz;
-//         });
-//         const sizsX = sizs.map(([x]) => x);
-//         const sizsY = sizs.map(([, y]) => y);
-//         const w = sizsX.reduce((sx, sy) => Math.max(sx, sy));
-//         const h = sizsY.reduce((sx, sy) => sx + sy);
-//         prop.val = [w, h];
-//     });
-//     const fontSize = node();
-//     const n = textNs.length;
-//     const children = textNs.map((textN, i) => {
-//         const fullTextN = nodeT([textN, fontSize], () => ({
-//             ...textN.val,
-//             ...{ size: fontSize.val, whiteSpace: 'nowrap' }
-//         }));
-//         const stepSiz = (i / n) * 100;
-//         const siz = safeMapN([sizes[i], prop], ([w, h], [pw, ph]) => [
-//             (w / pw) * 100,
-//             (1 / n) * 100
-//         ]);
-//         const post = justify(siz, stepSiz);
-//         const r = Supp({
-//             layout: {
-//                 pos: post,
-//                 siz
-//             }
-//         });
-//         return Tree(text(fullTextN)(r));
-//     });
-//     const chSizs = children.map(ch => ch.val.layout.sizAbs);
-//     safeTran(chSizs.concat([prop]), () => {
-//         const currentSizeX = chSizs
-//             .map(x => x.val[0])
-//             .reduce((x, y) => Math.max(x, y));
-//         const size16pxX = prop.val[0];
-//         const newSize = smooth((currentSizeX / size16pxX) * 16);
-//         fontSize.val = newSize + 'px';
-//     });
-//     const res = Tree(proportional(prop)(rect), children);
-//     return res;
-// };
-
 const linesTemplate = justify => textNs => tree => {
     const prop = node();
     const sizes = [];
@@ -3278,15 +3096,6 @@ const linesTemplate = justify => textNs => tree => {
     const propRes = proportional(prop, Tree(tree.val, children));
     return propRes;
 };
-
-// export const linesL = linesTemplate((siz, step) => node([0, step]));
-// export const linesR = linesTemplate((siz, step) =>
-//     mapN([siz], ([sx, sy]) => [100 - sx, step])
-// );
-// export const linesC = linesTemplate((siz, step) =>
-//     mapN([siz], ([sx, sy]) => [(100 - sx) / 2, step])
-// );
-// export const line = textNode => linesL([textNode]);
 
 const linesL = linesTemplate((siz, step) => node([0, step]));
 const linesR = linesTemplate((siz, step) =>
