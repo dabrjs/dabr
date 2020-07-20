@@ -1,16 +1,16 @@
 import { mapValuesObj, isNotNull, iterate } from '../utils/index.js';
 import { node, tran } from '../node.js';
-import { Rect, Dummy } from '../rect.js';
+import { Rect, Dummy, Supp } from '../rect.js';
 import { Tree } from '../tree.js';
 import { top } from '../rect-tree.js';
 import { container } from './container.js';
 
-const switcher = (route, routeRectMap) => {
+export const switcher = (route, routeRectMap) => {
     const children = node();
     const routeMap = mapValuesObj(routeRectMap, val => {
         const destroy = val.destroy ? val.destroy : false;
         const show = node(false);
-        const rectT = top(container(show))(val.content || val);
+        const rectT = container(show, val.content || val);
         return {
             show,
             rectT,
@@ -37,7 +37,7 @@ const switcher = (route, routeRectMap) => {
         siz.val = [100, 100];
     });
     return Tree(
-        Rect({
+        Supp({
             layout: {
                 pos: [0, 0],
                 siz
@@ -46,5 +46,3 @@ const switcher = (route, routeRectMap) => {
         children
     );
 };
-
-export { switcher };

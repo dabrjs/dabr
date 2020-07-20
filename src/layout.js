@@ -1,5 +1,5 @@
 import { vectorPlus, isNotNull } from './utils/index.js';
-import { tran, mapN, safeMapN } from './node.js';
+import { tran } from './node.js';
 import { splitCoord } from './coord.js';
 
 // Add render transitions related to layout (positioning)
@@ -7,7 +7,7 @@ export const addLayoutTriggers = (layout, elem, rect, parLayout) => {
     const scaN = parLayout.scale;
 
     const posN = layout.pos;
-    const posT = tran([posN, scaN], () => {
+    rect.tran([posN, scaN], () => {
         const [posRel, posPx] = splitCoord(posN.val);
         const sca = scaN.val;
         elem.style.left = `calc(${posRel[0] * sca[0]}% + ${
@@ -17,10 +17,10 @@ export const addLayoutTriggers = (layout, elem, rect, parLayout) => {
             posPx[1]
         }px)`;
     });
-    rect.renderTrans.add(posT);
+    //rect.renderTrans.add(posT);
 
     const sizN = layout.siz;
-    const sizT = tran([sizN, scaN], () => {
+    rect.tran([sizN, scaN], () => {
         const [sizRel, sizPx] = splitCoord(sizN.val);
         const sca = scaN.val;
         elem.style.width = `calc(${sizRel[0] * sca[0]}% + ${
@@ -30,13 +30,14 @@ export const addLayoutTriggers = (layout, elem, rect, parLayout) => {
             sizPx[1]
         }px)`;
     });
-    rect.renderTrans.add(sizT);
+    //rect.renderTrans.add(sizT);
 };
 
 // Rect's default layout reactivity updates posAbs and sizAbs whenever
 // max, siz or pos changes. posAbs and sizAbs should not be changed
 // directly
 export const defaultLayoutReactivity = (
+    rect,
     posN, // rect's relative position node
     sizN, // rect's relative size node
     pScaleN, // parent's max node
@@ -45,7 +46,7 @@ export const defaultLayoutReactivity = (
     posAbsN, // rect's absolute position
     sizAbsN // rect's absolute size
 ) =>
-    safeMapN(
+    tran(
         [posN, sizN, pScaleN, pPosAbsN, pSizAbsN],
         (pos, siz, pScale, pPosAbs, pSizAbs) => {
             const [posRel, posPx] = splitCoord(pos);

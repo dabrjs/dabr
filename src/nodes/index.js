@@ -1,11 +1,4 @@
-import {
-    node,
-    tran,
-    safeTran,
-    tranRef,
-    toNode,
-    mapN
-} from '../node.js';
+import { node, tran, toNode } from '../node.js';
 import { iterate, vectorPlus, copyArray } from '../utils/index.js';
 import { mapT } from '../tree.js';
 import { addEvent } from '../rect.js';
@@ -24,13 +17,12 @@ const scrollRef = {};
 
 const nodes = {
     fullSize: ({ elem, rect, tree, node: fs }) => {
-        const t = tran([tree.children], () => {
+        rect.tran([tree.children], () => {
             const chs = tree.children.val;
             const limits = chs.map(tCh => {
                 const r = tCh.val;
                 const lay = r.layout;
-                const limit = node();
-                tran([lay.posAbs, lay.sizAbs], () => {
+                return tran([lay.posAbs, lay.sizAbs], () => {
                     const limitAbs = vectorPlus(
                         lay.posAbs.val,
                         lay.sizAbs.val
@@ -39,11 +31,10 @@ const nodes = {
                         lay.pos.val,
                         lay.siz.val
                     );
-                    limit.val = [limitAbs, limitLen];
+                    return [limitAbs, limitLen];
                 });
-                return limit;
             });
-            safeTran(limits, () => {
+            tran(limits, () => {
                 fs.val = copyCoord(
                     limits
                         .map(l => l.val)
@@ -62,7 +53,7 @@ const nodes = {
                 );
             });
         });
-        rect.renderTrans.add(t);
+        //rect.renderTrans.add(t);
     },
     fullSizeCor: ({ elem, rect, tree, node: fsc }) => {
         const fs = node();
@@ -70,7 +61,7 @@ const nodes = {
         const siz = rect.layout.sizAbs;
         const sca = rect.layout.scale;
         const pSiz = rect.inst.par.layout.sizAbs;
-        tran([fs, siz, pSiz, sca], () => {
+        rect.tran([fs, siz, pSiz, sca], () => {
             const [[fsrx, fsry], [fspx, fspy]] = splitCoord(fs.val);
             const [sx, sy] = siz.val;
             const [psx, psy] = pSiz.val;
@@ -84,15 +75,15 @@ const nodes = {
         addEvent(rect, 'scroll', () => {
             scroll.val = [elem.scrollLeft, elem.scrollTop];
         });
-        const t = tran([scroll], () => {
+        rect.tran([scroll], () => {
             const [l, t] = scroll.val;
             elem.scrollLeft = l;
             elem.scrollTop = t;
         });
-        rect.renderTrans.add(t);
+        //rect.renderTrans.add(t);
     },
     scroll: ({ elem, rect, node: scroll }) => {
-        const limN = mapN([rect.layout.sizAbs], siz => {
+        const limN = rect.tran([rect.layout.sizAbs], siz => {
             const w = elem.scrollWidth;
             const h = elem.scrollHeight;
             const sw = Math.round(siz[0]);
@@ -109,38 +100,43 @@ const nodes = {
                 lim[1] === 0 ? 0 : 100 * (elem.scrollTop / lim[1])
             ];
         });
-        const t = tranRef(scrollRef, [scroll], () => {
-            const [l, t] = scroll.val;
-            const lim = limN.val;
-            const res = [
-                Math.round((l / 100) * lim[0]),
-                Math.round((t / 100) * lim[1])
-            ];
-            if (elem.scrollLeft != res[0]) {
-                elem.scrollLeft = res[0];
-            }
-            if (elem.scrollTop != res[1]) {
-                elem.scrollTop = res[1];
-            }
-        });
-        rect.renderTrans.add(t);
+        rect.tran(
+            [scroll],
+            () => {
+                const [l, t] = scroll.val;
+                const lim = limN.val;
+                const res = [
+                    Math.round((l / 100) * lim[0]),
+                    Math.round((t / 100) * lim[1])
+                ];
+                if (elem.scrollLeft != res[0]) {
+                    elem.scrollLeft = res[0];
+                }
+                if (elem.scrollTop != res[1]) {
+                    elem.scrollTop = res[1];
+                }
+            },
+            scrollRef
+        );
+        //rect.renderTrans.add(t);
     }
 };
 
-export default mapT((r, t) => {
-    if (r.nodes) {
-        iterate(r.nodes, ([name, val]) => {
-            const nd = name == 'fullSize' ? val : toNode(val);
-            const ans = nodes[name];
-            if (ans) {
-                ans({
-                    node: nd,
-                    elem: r.inst.dom,
-                    rect: r,
-                    tree: t
-                });
-            }
-        });
-    }
-    return r;
-});
+export default tree =>
+    mapT(tree, (r, t) => {
+        if (r.nodes) {
+            iterate(r.nodes, ([name, val]) => {
+                const nd = name == 'fullSize' ? val : toNode(val);
+                const ans = nodes[name];
+                if (ans) {
+                    ans({
+                        node: nd,
+                        elem: r.inst.dom,
+                        rect: r,
+                        tree: t
+                    });
+                }
+            });
+        }
+        return r;
+    });

@@ -14,6 +14,8 @@ const isObj = x =>
 
 const isNotNull = x => (x == 0 && !isArray(x)) || !!x;
 
+const isFunction = x => !!x && typeof x == 'function';
+
 const arrayToObj = arr => {
     let res = {};
     arr.forEach(([key, val]) => {
@@ -152,7 +154,7 @@ const mkNode = target => new Proxy(target, { set, get });
 const get = (target, prop) =>
     prop == 'target' ? target : target[prop];
 
-const set = (target, prop, value, receiver) => {
+const set = (target, prop, value) => {
     if (prop == 'val') {
         // Node networks care about value equality. Different from
         // channels, if the value is the same nothing happens.
@@ -183,48 +185,77 @@ const allNodesNotNull = nds =>
 
 // Binds a transition to many nodes.
 // It runs whenever any one of the binded nodes change.
-const tran = (nodes, func) => {
+// export const tran = (nodes, func) => {
+//     if (nodes.length > 0) {
+//         const transition = { nodes, func };
+//         // Many transitions with the same tag is not allowed. Tags are
+//         // used as an indentity for dynamically created transitions.
+//         nodes.forEach(nd => {
+//             const ts = nd.target.trans;
+//             if (!ts.has(transition)) {
+//                 ts.add(transition);
+//             }
+//         });
+//         // The transition runs right away if nodes are initialized with
+//         // non null values.
+//         if (allNodesNotNull(nodes)) {
+//             func();
+//         }
+//         return transition;
+//     } else {
+//         return null;
+//     }
+// };
+
+const tranRef = (...args) => {
+    const len = args.length;
+    //const triggerFunc = args[len - 1];
+    const lastElem = args[len - 1];
+    let triggerFunc;
+    let ref;
+    if (isFunction(lastElem)) {
+        triggerFunc = lastElem;
+        ref = null;
+    } else {
+        triggerFunc = args[len - 2];
+        ref = lastElem;
+    }
+    const nodes = args
+        .splice(0, len - 1)
+        .map(x => (isArray(x) ? x : [x]))
+        .reduce((x, y) => x.concat(y));
     if (nodes.length > 0) {
-        const transition = { nodes, func };
+        const aLength = triggerFunc.length;
+        const toGetNodes = [];
+        for (let i = 0; i < aLength; i++) {
+            toGetNodes.push(nodes[i]);
+        }
+        const result = node();
+        const func = () => {
+            if (allNodesNotNull(nodes)) {
+                result.val = triggerFunc(
+                    ...toGetNodes.map(n => n.val)
+                );
+            }
+        };
+        const transition = { nodes, func, ref };
         // Many transitions with the same tag is not allowed. Tags are
         // used as an indentity for dynamically created transitions.
         nodes.forEach(nd => {
             const ts = nd.target.trans;
             if (!ts.has(transition)) {
-                ts.add(transition);
-            }
-        });
-        // The transition runs right away if nodes are initialized with
-        // non null values.
-        if (allNodesNotNull(nodes)) {
-            func();
-        }
-        return transition;
-    } else {
-        return null;
-    }
-};
-
-// Same thing as tran but every transition has a ref attribute in a
-// way thaat only 1 transition with the same 'ref' object can be
-// inside a node. When tranRef is used in  node with a transition with
-// the same ref, the old transition is replaced by the new one. This
-// is useful sometimes
-const tranRef = (ref, nodes, func) => {
-    if (nodes.length > 0) {
-        const transition = { nodes, func, ref };
-        // Many transitions with the same tag is not allowed. Tags are
-        // used as an indentity for dynamically created transitions.
-        nodes.forEach(nd => {
-            const targ = nd.target;
-            const ts = targ.trans;
-            if (!ts.has(transition)) {
-                const res = [...ts].find(t => t.ref == ref);
-                if (res) {
-                    removeTran(res);
-                    ts.add(transition);
+                if (ref) {
+                    const res = [...ts].find(t => t.ref == ref);
+                    if (res) {
+                        removeTran(res);
+                        ts.add(transition);
+                    } else {
+                        ts.add(transition);
+                    }
                 } else {
-                    ts.add(transition);
+                    if (!ts.has(transition)) {
+                        ts.add(transition);
+                    }
                 }
             }
         });
@@ -233,19 +264,120 @@ const tranRef = (ref, nodes, func) => {
         if (allNodesNotNull(nodes)) {
             func();
         }
-        return transition;
+        return { node: result, transition };
     } else {
         return null;
     }
 };
 
-// Only runs if all binded nodes are not null
-const safeTran = (nodes, func) =>
-    tran(nodes, () => {
-        if (allNodesNotNull(nodes)) {
-            func();
+const tran = (...args) => {
+    const { node } = tranRef(...args);
+    return node;
+};
+
+const unsafeTranRef = (...args) => {
+    const len = args.length;
+    //const triggerFunc = args[len - 1];
+    const lastElem = args[len - 1];
+    let triggerFunc;
+    let ref;
+    if (isFunction(lastElem)) {
+        triggerFunc = lastElem;
+        ref = null;
+    } else {
+        triggerFunc = args[len - 2];
+        ref = lastElem;
+    }
+    const nodes = args
+        .splice(0, len - 1)
+        .map(x => (isArray(x) ? x : [x]))
+        .reduce((x, y) => x.concat(y));
+    if (nodes.length > 0) {
+        const aLength = triggerFunc.length;
+        const toGetNodes = [];
+        for (let i = 0; i < aLength; i++) {
+            toGetNodes.push(nodes[i]);
         }
-    });
+        const result = node();
+        const func = () => {
+            result.val = triggerFunc(...toGetNodes.map(n => n.val));
+        };
+        const transition = { nodes, func, ref };
+        // Many transitions with the same tag is not allowed. Tags are
+        // used as an indentity for dynamically created transitions.
+        nodes.forEach(nd => {
+            const ts = nd.target.trans;
+            if (!ts.has(transition)) {
+                if (ref) {
+                    const res = [...ts].find(t => t.ref == ref);
+                    if (res) {
+                        removeTran(res);
+                        ts.add(transition);
+                    } else {
+                        ts.add(transition);
+                    }
+                } else {
+                    if (!ts.has(transition)) {
+                        ts.add(transition);
+                    }
+                }
+            }
+        });
+        // The transition runs right away if nodes are initialized with
+        // non null values.
+        func();
+        return { node: result, transition };
+    } else {
+        return null;
+    }
+};
+
+const unsafeTran = (...args) => {
+    const { node } = unsafeTranRef(...args);
+    return node;
+};
+
+// // Same thing as tran but every transition has a ref attribute in a
+// // way thaat only 1 transition with the same 'ref' object can be
+// // inside a node. When tranRef is used in  node with a transition with
+// // the same ref, the old transition is replaced by the new one. This
+// // is useful sometimes
+// export const tranRef = (ref, nodes, func) => {
+//     if (nodes.length > 0) {
+//         const transition = { nodes, func, ref };
+//         // Many transitions with the same tag is not allowed. Tags are
+//         // used as an indentity for dynamically created transitions.
+//         nodes.forEach(nd => {
+//             const targ = nd.target;
+//             const ts = targ.trans;
+//             if (!ts.has(transition)) {
+//                 const res = [...ts].find(t => t.ref == ref);
+//                 if (res) {
+//                     removeTran(res);
+//                     ts.add(transition);
+//                 } else {
+//                     ts.add(transition);
+//                 }
+//             }
+//         });
+//         // The transition runs right away if nodes are initialized with
+//         // non null values.
+//         if (allNodesNotNull(nodes)) {
+//             func();
+//         }
+//         return transition;
+//     } else {
+//         return null;
+//     }
+// };
+
+// Only runs if all binded nodes are not null
+// export const safeTran = (nodes, func) =>
+//     tran(nodes, () => {
+//         if (allNodesNotNull(nodes)) {
+//             func();
+//         }
+//     });
 
 // Remove a transition from all binded nodes
 const removeTran = transition => {
@@ -259,28 +391,28 @@ const removeTran = transition => {
 const toNode = x => (x.isNode ? x : node(x));
 
 // Create a node from a transition
-const nodeT = (nodes, func, info) => {
-    const aux = node(null, info);
-    tran(nodes, () => {
-        aux.val = func();
-    });
-    return aux;
-};
+// export const nodeT = (nodes, func, info) => {
+//     const aux = node(null, info);
+//     tran(nodes, () => {
+//         aux.val = func();
+//     });
+//     return aux;
+// };
 
-const safeNodeT = (nodes, func, info) => {
-    const aux = node(null, info);
-    safeTran(nodes, () => {
-        aux.val = func();
-    });
-    return aux;
-};
+// export const safeNodeT = (nodes, func, info) => {
+//     const aux = node(null, info);
+//     safeTran(nodes, () => {
+//         aux.val = func();
+//     });
+//     return aux;
+// };
 
 // Similar to nodeT but the function receives values as input
-const mapN = (ns, f, info) =>
-    nodeT(ns, () => f(...ns.map(n => n.val)), info);
+// export const mapN = (ns, f, info) =>
+//     nodeT(ns, () => f(...ns.map(n => n.val)), info);
 
-const safeMapN = (ns, f, info) =>
-    safeNodeT(ns, () => f(...ns.map(n => n.val)), info);
+// export const safeMapN = (ns, f, info) =>
+//     safeNodeT(ns, () => f(...ns.map(n => n.val)), info);
 
 // If a node carries object information, the subNode function creates
 // a 1-way sub-node, that changes when the original node's attribute
@@ -291,8 +423,8 @@ const subNode = (nd, attr) => mapN([nd], x => x[attr]);
 // Like 'subNode' but with 2-way changes. Changing the sub-node
 // changes the parent node as well
 const subNode2 = (nd, attr) => {
-    const aux = mapN([nd], x => x[attr]);
-    tran([aux], () => {
+    const aux = tran(nd, x => x[attr]);
+    tran(aux, () => {
         const val = nd.val;
         val[attr] = aux.val;
         nd.val = val;
@@ -311,7 +443,7 @@ const Tree = (val, children) => {
             if (isArray(children.val)) {
                 ch = children;
             } else {
-                ch = mapN([children], singleton);
+                ch = tran(children, singleton);
             }
         } else {
             if (children.isEntry) {
@@ -333,39 +465,18 @@ const Tree = (val, children) => {
 // Shorthand only
 const T = Tree;
 
-// Maps a function through the rect
-const mapT = f => (tree, path = []) =>
+// (a -> b) -> Tree a -> Tree b
+const mapT = (tree, f, path = []) =>
     Tree(
         f(tree.val, tree, path),
         tree.children.isEntry
             ? tree.children
-            : mapN([tree.children], chs =>
-                  chs.map((ch, i) => mapT(f)(ch, path.concat(i)))
+            : tran(tree.children, chs =>
+                  chs.map((ch, i) => mapT(ch, f, path.concat(i)))
               )
     );
-
-const treePath = (tree, path) => {
-    let res = null;
-    walkT((t, p) => {
-        if (isEqual(p, path)) {
-            res = t;
-        }
-    })(tree);
-    return res;
-};
-
-const getFirst = tree => treePath(tree, []);
-
-// Similar to map but the output does not matter
-const walkT = f => (tree, path = []) => {
-    f(tree.val, path);
-    if (!tree.children.isEntry) {
-        tran([tree.children], () => {
-            const chs = tree.children.val;
-            chs.forEach((ch, i) => walkT(f)(ch, path.concat(i)));
-        });
-    }
-};
+const _mapT = (f, path = []) => tree =>
+    mapT(tree, f, (path = []));
 
 // Special object used to indicate entry-points to flatten Trees of
 // Trees of A into Trees of A (see 'flatten' function)
@@ -374,27 +485,72 @@ const Entry = {
 };
 
 // Substitute an Entry object by children
-const substEntry = (tree, val) => {
+const substEntryByChildren = (tree, val) => {
     if (tree.children.isEntry) {
         tree.children = val;
     } else {
-        tree.children = mapN([tree.children], chs =>
-            chs.map(ch => substEntry(ch, val))
+        tree.children = tran(tree.children, chs =>
+            chs.map(ch => substEntryByChildren(ch, val))
         );
     }
     return tree;
 };
 
+const substChildrenByEntry = (tree, ref) => {
+    let children;
+    if (tree.children == ref) {
+        children = Entry;
+    } else {
+        children = tran(tree.children, chs =>
+            chs.map(ch => substChildrenByEntry(ch, ref))
+        );
+    }
+    return Tree(tree.val, children);
+};
+
+// (Tree a -> Tree b) -> Tree a -> Tree b
+const walkT = (tree, f, state = null, path = []) => {
+    const ans = f(tree, state, path);
+    const isIt = isArray(ans);
+    const res = isIt ? ans[0] : ans;
+    const newState = isIt ? ans[1] : state;
+    const resWithEntry = res
+        ? substChildrenByEntry(res, tree.children)
+        : null;
+    //console.log('ok', resWithEntry, resWithEntry.val.layout.sizAbs);
+    const resChildren = tran(tree.children, chs =>
+        chs.map((ch, i) => walkT(ch, f, newState, path.concat(i)))
+    );
+    return res
+        ? substEntryByChildren(resWithEntry, resChildren)
+        : null;
+};
+const _walkT = (f, state = null, path = []) => tree =>
+    walkT(tree, f, state, path);
+
+const pathT = (tree, path) => {
+    let res = null;
+    walkT(tree, (t, s, p) => {
+        if (isEqual(p, path)) {
+            res = t;
+        }
+    });
+    return res;
+};
+const _pathT = path => tree => pathT(tree, path);
+
+const toStruc = tree => mapT(tree, x => Tree(x, Entry));
+
 // Flattens a Tree of Trees using the Entry special object as an
 // indicator of how to flatten the trees. Really useful for all sorts
 // of transformations.
-const flatten = tree => {
+const fromStruc = tree => {
     const val = tree.val;
     if (val.isTree) {
-        return flatten(substEntry(val, tree.children));
+        return fromStruc(substEntryByChildren(val, tree.children));
     } else {
-        tree.children = mapN([tree.children], chs =>
-            chs.map(flatten)
+        tree.children = tran(tree.children, chs =>
+            chs.map(fromStruc)
         );
         return tree;
     }
@@ -414,24 +570,25 @@ const styleAttrs = {
 };
 
 // Binds CSS properties to nodes
-var addStyle = mapT(r => {
-    if (r.style) {
-        iterate(r.style, ([name, val]) => {
-            const nd = toNode(val);
-            const ans = styleAttrs[name];
-            if (ans) {
-                const tr = ans({
-                    node: nd,
-                    elem: r.inst.dom,
-                    rect: r
-                });
-                const t = tran([nd], tr);
-                r.renderTrans.add(t);
-            }
-        });
-    }
-    return r;
-});
+var addStyle = tree =>
+    mapT(tree, r => {
+        if (r.style) {
+            iterate(r.style, ([name, val]) => {
+                const nd = toNode(val);
+                const ans = styleAttrs[name];
+                if (ans) {
+                    const tr = ans({
+                        node: nd,
+                        elem: r.inst.dom,
+                        rect: r
+                    });
+                    r.tran([nd], tr);
+                    //r.renderTrans.add(t);
+                }
+            });
+        }
+        return r;
+    });
 
 const events = {
     click: ({ elem, channel }) => {
@@ -480,23 +637,24 @@ const events = {
 };
 
 // Binds events to channels
-var addChans = mapT(r => {
-    if (r.events) {
-        iterate(r.events, ([name, ch]) => {
-            if (ch.isChan) {
-                const ans = events[name];
-                if (ans) {
-                    ans({
-                        channel: ch,
-                        elem: r.inst.dom,
-                        rect: r
-                    });
+var addChans = tree =>
+    mapT(tree, r => {
+        if (r.events) {
+            iterate(r.events, ([name, ch]) => {
+                if (ch.isChan) {
+                    const ans = events[name];
+                    if (ans) {
+                        ans({
+                            channel: ch,
+                            elem: r.inst.dom,
+                            rect: r
+                        });
+                    }
                 }
-            }
-        });
-    }
-    return r;
-});
+            });
+        }
+        return r;
+    });
 
 // Channel creation entry point
 const chan = (val, info) =>
@@ -663,7 +821,8 @@ const Rect = def => {
         domEvents: [],
         //renderListens: new Set(),
         data: new WeakMap([[Rect, {}]]),
-        layout: defaultLayout
+        layout: defaultLayout,
+        tran: rectTran
     };
 
     const aux = {};
@@ -686,6 +845,13 @@ const Rect = def => {
         res.layout = mapObj(toNode, res.layout);
     }
     return res;
+};
+
+const rectTran = function(...args) {
+    // this = rect
+    const { transition, node: nd } = tranRef(...args);
+    this.renderTrans.add(transition);
+    return nd;
 };
 
 // Same as Rect, but with isAux = true
@@ -840,13 +1006,12 @@ const scrollRef = {};
 
 const nodes = {
     fullSize: ({ elem, rect, tree, node: fs }) => {
-        const t = tran([tree.children], () => {
+        rect.tran([tree.children], () => {
             const chs = tree.children.val;
             const limits = chs.map(tCh => {
                 const r = tCh.val;
                 const lay = r.layout;
-                const limit = node();
-                tran([lay.posAbs, lay.sizAbs], () => {
+                return tran([lay.posAbs, lay.sizAbs], () => {
                     const limitAbs = vectorPlus(
                         lay.posAbs.val,
                         lay.sizAbs.val
@@ -855,11 +1020,10 @@ const nodes = {
                         lay.pos.val,
                         lay.siz.val
                     );
-                    limit.val = [limitAbs, limitLen];
+                    return [limitAbs, limitLen];
                 });
-                return limit;
             });
-            safeTran(limits, () => {
+            tran(limits, () => {
                 fs.val = copyCoord(
                     limits
                         .map(l => l.val)
@@ -878,7 +1042,7 @@ const nodes = {
                 );
             });
         });
-        rect.renderTrans.add(t);
+        //rect.renderTrans.add(t);
     },
     fullSizeCor: ({ elem, rect, tree, node: fsc }) => {
         const fs = node();
@@ -886,7 +1050,7 @@ const nodes = {
         const siz = rect.layout.sizAbs;
         const sca = rect.layout.scale;
         const pSiz = rect.inst.par.layout.sizAbs;
-        tran([fs, siz, pSiz, sca], () => {
+        rect.tran([fs, siz, pSiz, sca], () => {
             const [[fsrx, fsry], [fspx, fspy]] = splitCoord(fs.val);
             const [sx, sy] = siz.val;
             const [psx, psy] = pSiz.val;
@@ -900,15 +1064,15 @@ const nodes = {
         addEvent(rect, 'scroll', () => {
             scroll.val = [elem.scrollLeft, elem.scrollTop];
         });
-        const t = tran([scroll], () => {
+        rect.tran([scroll], () => {
             const [l, t] = scroll.val;
             elem.scrollLeft = l;
             elem.scrollTop = t;
         });
-        rect.renderTrans.add(t);
+        //rect.renderTrans.add(t);
     },
     scroll: ({ elem, rect, node: scroll }) => {
-        const limN = mapN([rect.layout.sizAbs], siz => {
+        const limN = rect.tran([rect.layout.sizAbs], siz => {
             const w = elem.scrollWidth;
             const h = elem.scrollHeight;
             const sw = Math.round(siz[0]);
@@ -925,41 +1089,46 @@ const nodes = {
                 lim[1] === 0 ? 0 : 100 * (elem.scrollTop / lim[1])
             ];
         });
-        const t = tranRef(scrollRef, [scroll], () => {
-            const [l, t] = scroll.val;
-            const lim = limN.val;
-            const res = [
-                Math.round((l / 100) * lim[0]),
-                Math.round((t / 100) * lim[1])
-            ];
-            if (elem.scrollLeft != res[0]) {
-                elem.scrollLeft = res[0];
-            }
-            if (elem.scrollTop != res[1]) {
-                elem.scrollTop = res[1];
-            }
-        });
-        rect.renderTrans.add(t);
+        rect.tran(
+            [scroll],
+            () => {
+                const [l, t] = scroll.val;
+                const lim = limN.val;
+                const res = [
+                    Math.round((l / 100) * lim[0]),
+                    Math.round((t / 100) * lim[1])
+                ];
+                if (elem.scrollLeft != res[0]) {
+                    elem.scrollLeft = res[0];
+                }
+                if (elem.scrollTop != res[1]) {
+                    elem.scrollTop = res[1];
+                }
+            },
+            scrollRef
+        );
+        //rect.renderTrans.add(t);
     }
 };
 
-var addNodes = mapT((r, t) => {
-    if (r.nodes) {
-        iterate(r.nodes, ([name, val]) => {
-            const nd = name == 'fullSize' ? val : toNode(val);
-            const ans = nodes[name];
-            if (ans) {
-                ans({
-                    node: nd,
-                    elem: r.inst.dom,
-                    rect: r,
-                    tree: t
-                });
-            }
-        });
-    }
-    return r;
-});
+var addNodes = tree =>
+    mapT(tree, (r, t) => {
+        if (r.nodes) {
+            iterate(r.nodes, ([name, val]) => {
+                const nd = name == 'fullSize' ? val : toNode(val);
+                const ans = nodes[name];
+                if (ans) {
+                    ans({
+                        node: nd,
+                        elem: r.inst.dom,
+                        rect: r,
+                        tree: t
+                    });
+                }
+            });
+        }
+        return r;
+    });
 
 // A set of functions for easy Tree of Rect manipulation
 
@@ -993,7 +1162,7 @@ const addLayoutTriggers = (layout, elem, rect, parLayout) => {
     const scaN = parLayout.scale;
 
     const posN = layout.pos;
-    const posT = tran([posN, scaN], () => {
+    rect.tran([posN, scaN], () => {
         const [posRel, posPx] = splitCoord(posN.val);
         const sca = scaN.val;
         elem.style.left = `calc(${posRel[0] * sca[0]}% + ${
@@ -1003,10 +1172,10 @@ const addLayoutTriggers = (layout, elem, rect, parLayout) => {
             posPx[1]
         }px)`;
     });
-    rect.renderTrans.add(posT);
+    //rect.renderTrans.add(posT);
 
     const sizN = layout.siz;
-    const sizT = tran([sizN, scaN], () => {
+    rect.tran([sizN, scaN], () => {
         const [sizRel, sizPx] = splitCoord(sizN.val);
         const sca = scaN.val;
         elem.style.width = `calc(${sizRel[0] * sca[0]}% + ${
@@ -1016,13 +1185,14 @@ const addLayoutTriggers = (layout, elem, rect, parLayout) => {
             sizPx[1]
         }px)`;
     });
-    rect.renderTrans.add(sizT);
+    //rect.renderTrans.add(sizT);
 };
 
 // Rect's default layout reactivity updates posAbs and sizAbs whenever
 // max, siz or pos changes. posAbs and sizAbs should not be changed
 // directly
 const defaultLayoutReactivity = (
+    rect,
     posN, // rect's relative position node
     sizN, // rect's relative size node
     pScaleN, // parent's max node
@@ -1031,7 +1201,7 @@ const defaultLayoutReactivity = (
     posAbsN, // rect's absolute position
     sizAbsN // rect's absolute size
 ) =>
-    safeMapN(
+    tran(
         [posN, sizN, pScaleN, pPosAbsN, pSizAbsN],
         (pos, siz, pScale, pPosAbs, pSizAbs) => {
             const [posRel, posPx] = splitCoord(pos);
@@ -2007,13 +2177,13 @@ const runRect = rectT => {
             dom: document.body
         }
     };
-
+    window.j = sizAbs;
     window.onresize = () => {
         sizAbs.val = getDeviceSize();
     };
     // Flattens tree so that Trees of Trees of ... Trees of Rects
     // become just Trees of Rects
-    return runInside(flatten(rectT), parent);
+    return runInside(fromStruc(rectT), parent);
 };
 
 // Similar to runRect, but runs inside any DOM element. Uses
@@ -2041,7 +2211,7 @@ const runRectDOM = (rectT, dom) => {
     }).observe(dom);
     // Flattens tree so that Trees of Trees of ... Trees of Rects
     // become just Trees of Rects
-    return runInside(flatten(rectT), parent);
+    return runInside(fromStruc(rectT), parent);
 };
 
 // Main run function
@@ -2062,6 +2232,7 @@ const runInside = (rectT, parent) => {
     addLayoutTriggers(lay, elem, rect, parent.layout);
     // Adds (default) resize reactivity to the rect
     defaultLayoutReactivity(
+        rect,
         lay.pos,
         lay.siz,
         parent.layout.scale,
@@ -2090,7 +2261,7 @@ const runInside = (rectT, parent) => {
 // If a child is dynamically removed/added from the children node's
 // array its DOM element is removed/created.
 const addChildrenTrigger = (children, parent) => {
-    const t = tran([children], () => {
+    parent.tran(children, () => {
         let neu = children.val;
         let alt = children.old;
         if (!alt) alt = [];
@@ -2100,7 +2271,7 @@ const addChildrenTrigger = (children, parent) => {
         created.forEach(x => runInside(x, parent));
         removed.forEach(x => removeRect(x));
     });
-    parent.renderTrans.add(t);
+    //parent.renderTrans.add(t);
 };
 
 // Removes a rect, meaning its DOM is destroyed and events and node
@@ -2155,4 +2326,4 @@ const addDabrCss = elem => {
     elem.style['overflow-x'] = 'scroll';
 };
 
-export { Dummy, Entry, Rect, RectT, Supp, SuppT, T, Tree, addChans, addCoord, addEvent, addLayoutTriggers, addLen, addNodes, addStyle, applyF, asPx, chan, chanL, cond, condElse, copyCoord, copyLen, core, defaultLayoutReactivity, filterC, flatten, getFirst, getPx, getRel, keyed, len, listen, listenOnce, listenRef, mapC, mapN, mapT, mulCoord, mulLen, node, nodeT, preserveR, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, safeMapN, safeNodeT, safeTran, splitCoord, subNode, subNode2, supp, toNode, top, tran, tranRef, tree, treePath, walkT };
+export { Dummy, Entry, Rect, RectT, Supp, SuppT, T, Tree, _mapT, _pathT, _walkT, addChans, addCoord, addEvent, addLayoutTriggers, addLen, addNodes, addStyle, applyF, asPx, chan, chanL, cond, condElse, copyCoord, copyLen, core, defaultLayoutReactivity, filterC, fromStruc, getPx, getRel, keyed, len, listen, listenOnce, listenRef, mapC, mapT, mulCoord, mulLen, node, pathT, preserveR, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, splitCoord, subNode, subNode2, supp, toNode, toStruc, top, tran, tranRef, tree, unsafeTran, unsafeTranRef, walkT };

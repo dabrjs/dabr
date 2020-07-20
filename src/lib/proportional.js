@@ -1,11 +1,10 @@
 import { node, tran } from '../node.js';
 import { listenOnce } from '../channel.js';
-import { preserveR, keyed } from '../rect.js';
-import { SuppT } from '../rect-tree.js';
+import { Rect, Supp, preserveR, keyed, Dummy } from '../rect.js';
 import { Tree, Entry } from '../tree.js';
 import { px } from '../coord.js';
 
-export const proportional = prop => rect => {
+export const proportional = (prop, tree) => {
     const innerPos = node();
     const innerSiz = node();
     const data = keyed(proportional, {
@@ -13,36 +12,34 @@ export const proportional = prop => rect => {
         outter: true,
         inner: false
     });
-    const propRect = preserveR(rect, {
+    const rect = tree.val;
+    const sizAbs = node();
+    const supp = Supp({
         layout: {
-            pos: innerPos,
-            siz: innerSiz
+            pos: rect.layout.pos,
+            siz: rect.layout.siz,
+            sizAbs
         },
         data
     });
-    listenOnce([propRect.init], () => {
-        const par = propRect.inst.par;
-        const sizAbs = par.layout.sizAbs;
-        tran([prop, sizAbs], () => {
-            const [offset, newSize] = calcProportional(
-                prop.val,
-                sizAbs.val
-            );
-            innerPos.val = [px(offset[0]), px(offset[1])];
-            innerSiz.val = [px(newSize[0]), px(newSize[1])];
-        });
+    const newRect = preserveR(rect, {
+        layout: {
+            pos: innerPos,
+            siz: innerSiz
+        }
     });
-    return SuppT(
-        {
-            layout: {
-                pos: rect.layout.pos,
-                siz: rect.layout.siz
-            },
-            data
-        },
-        Tree(propRect, Entry)
-    );
+    tran([prop, sizAbs], () => {
+        const [offset, newSize] = calcProportional(
+            prop.val,
+            sizAbs.val
+        );
+        innerPos.val = [px(offset[0]), px(offset[1])];
+        innerSiz.val = [px(newSize[0]), px(newSize[1])];
+    });
+    return Tree(supp, Tree(newRect, tree.children));
 };
+
+export const _proportional = prop => tree => proportional(prop, tree);
 
 const calcProportional = (prop, siz) => {
     let w = siz[0];

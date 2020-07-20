@@ -6,7 +6,7 @@ import {
     isWeakMap,
     isObj
 } from './utils/index.js';
-import { node, toNode } from './node.js';
+import { node, toNode, tranRef } from './node.js';
 import { chan } from './channel.js';
 
 // Creates the staindard Rect interface, which is a standard set of
@@ -72,7 +72,8 @@ export const Rect = def => {
         domEvents: [],
         //renderListens: new Set(),
         data: new WeakMap([[Rect, {}]]),
-        layout: defaultLayout
+        layout: defaultLayout,
+        tran: rectTran
     };
 
     const aux = {};
@@ -95,6 +96,20 @@ export const Rect = def => {
         res.layout = mapObj(toNode, res.layout);
     }
     return res;
+};
+
+const rectTranRef = function(...args) {
+    // this = rect
+    const res = tranRef(...args);
+    this.renderTrans.add(res.transition);
+    return res;
+};
+
+const rectTran = function(...args) {
+    // this = rect
+    const { transition, node: nd } = tranRef(...args);
+    this.renderTrans.add(transition);
+    return nd;
 };
 
 // Same as Rect, but with isAux = true

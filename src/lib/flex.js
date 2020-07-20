@@ -1,5 +1,5 @@
 import { isNull, isNotNull } from '../utils/index.js';
-import { node, tran, tranRef, mapN, safeMapN } from '../node.js';
+import { node, tran } from '../node.js';
 import { listenOnce } from '../channel.js';
 import { keyed, preserveR } from '../rect.js';
 import { px, len, asPx, addCoord } from '../coord.js';
@@ -30,7 +30,7 @@ export const flex = rect => {
 
 export const flexX = rect => {
     const s = node([100, 100]);
-    const siz = mapN([s, rect.layout.siz], ([x], [, y]) => [x, y]);
+    const siz = tran([s, rect.layout.siz], ([x], [, y]) => [x, y]);
     listenOnce([rect.init], () => {
         rect.inst.dom.style['overflow'] = 'hidden';
     });
@@ -48,7 +48,7 @@ export const flexX = rect => {
 
 export const flexY = rect => {
     const s = node([100, 100]);
-    const siz = mapN([s, rect.layout.siz], ([, y], [x]) => [x, y]);
+    const siz = tran([s, rect.layout.siz], ([, y], [x]) => [x, y]);
     listenOnce([rect.init], () => {
         rect.inst.dom.style['overflow'] = 'hidden';
     });

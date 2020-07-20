@@ -48,20 +48,21 @@ const events = {
 };
 
 // Binds events to channels
-export default mapT(r => {
-    if (r.events) {
-        iterate(r.events, ([name, ch]) => {
-            if (ch.isChan) {
-                const ans = events[name];
-                if (ans) {
-                    ans({
-                        channel: ch,
-                        elem: r.inst.dom,
-                        rect: r
-                    });
+export default tree =>
+    mapT(tree, r => {
+        if (r.events) {
+            iterate(r.events, ([name, ch]) => {
+                if (ch.isChan) {
+                    const ans = events[name];
+                    if (ans) {
+                        ans({
+                            channel: ch,
+                            elem: r.inst.dom,
+                            rect: r
+                        });
+                    }
                 }
-            }
-        });
-    }
-    return r;
-});
+            });
+        }
+        return r;
+    });

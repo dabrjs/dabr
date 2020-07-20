@@ -1,16 +1,9 @@
 import { listenOnce } from '../channel.js';
-import {
-    tran,
-    safeTran,
-    safeMapN,
-    mapN,
-    node,
-    nodeT
-} from '../node.js';
+import { tran, node } from '../node.js';
 import { proportional } from './proportional.js';
 import { core, top } from '../rect-tree.js';
 import { Dummy, Supp } from '../rect.js';
-import { Tree, treePath, Entry } from '../tree.js';
+import { Tree, Entry } from '../tree.js';
 import { asPx, px } from '../coord.js';
 import { preserveR } from '../rect.js';
 
@@ -19,7 +12,7 @@ export const text = textNode => rect => {
     const textDom = node();
     rect.data.set(text, { size: textSize, dom: textDom });
     listenOnce([rect.init], () => {
-        mapN(
+        tran(
             [textNode],
             ({
                 color,
@@ -54,6 +47,7 @@ export const text = textNode => rect => {
         tran([rect.layout.sizAbs, textNode], () => {
             const div = textDom.val;
             const newSize = [div.offsetWidth, div.offsetHeight];
+            console.log('hmmmm', newSize);
             if (newSize[0] != 0 && newSize[1] != 0) {
                 textSize.val = newSize;
             }
@@ -65,7 +59,7 @@ export const text = textNode => rect => {
 export const paragraph = (textNode, rect) => {
     const res = text(textNode)(rect);
     const { size: textSize } = res.data.get(text);
-    safeTran([textSize], () => {
+    tran([textSize], () => {
         const [, h] = asPx(textSize.val);
         const [w] = res.layout.siz.val;
         res.layout.siz.val = [w, h];
@@ -123,7 +117,7 @@ const getSizeOf16pxText = ({
     return [w, h];
 };
 
-export const linesTemplate = justify => textNs => rect => {
+export const linesTemplate = justify => textNs => tree => {
     const prop = node();
     const sizes = [];
     textNs.forEach((_, i) => {
@@ -143,12 +137,12 @@ export const linesTemplate = justify => textNs => rect => {
     const fontSize = node();
     const n = textNs.length;
     const children = textNs.map((textN, i) => {
-        const fullTextN = nodeT([textN, fontSize], () => ({
+        const fullTextN = tran([textN, fontSize], () => ({
             ...textN.val,
             ...{ size: fontSize.val, whiteSpace: 'nowrap' }
         }));
         const stepSiz = (i / n) * 100;
-        const siz = safeMapN([sizes[i], prop], ([w, h], [pw, ph]) => [
+        const siz = tran([sizes[i], prop], ([w, h], [pw, ph]) => [
             (w / pw) * 100,
             (1 / n) * 100
         ]);
@@ -162,7 +156,8 @@ export const linesTemplate = justify => textNs => rect => {
         return Tree(text(fullTextN)(r));
     });
     const chSizs = children.map(ch => ch.val.layout.sizAbs);
-    safeTran(chSizs.concat([prop]), () => {
+    window.l = chSizs[0];
+    tran(chSizs.concat([prop]), () => {
         const currentSizeX = chSizs
             .map(x => x.val[0])
             .reduce((x, y) => Math.max(x, y));
@@ -170,15 +165,15 @@ export const linesTemplate = justify => textNs => rect => {
         const newSize = smooth((currentSizeX / size16pxX) * 16);
         fontSize.val = newSize + 'px';
     });
-    const res = Tree(proportional(prop)(rect), children);
-    return res;
+    const propRes = proportional(prop, Tree(tree.val, children));
+    return propRes;
 };
 
 export const linesL = linesTemplate((siz, step) => node([0, step]));
 export const linesR = linesTemplate((siz, step) =>
-    mapN([siz], ([sx, sy]) => [100 - sx, step])
+    tran([siz], ([sx, sy]) => [100 - sx, step])
 );
 export const linesC = linesTemplate((siz, step) =>
-    mapN([siz], ([sx, sy]) => [(100 - sx) / 2, step])
+    tran([siz], ([sx, sy]) => [(100 - sx) / 2, step])
 );
 export const line = textNode => linesL([textNode]);

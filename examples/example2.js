@@ -38,8 +38,7 @@ import {
     flexX,
     flexY,
     px,
-    len,
-    mapN
+    len
 } from '../dist/dabr.js';
 import {
     text,
@@ -395,7 +394,7 @@ const lili = Tree(
             }
         })
     ),
-    mapN([rects()], vertical)
+    tran([rects()], vertical)
 );
 
 const ll = () => {

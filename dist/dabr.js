@@ -28,6 +28,8 @@ const isNumber = x =>
 
 const isNotNull = x => (x == 0 && !isArray(x)) || !!x;
 
+const isFunction = x => !!x && typeof x == 'function';
+
 const arrayToObj = arr => {
     let res = {};
     arr.forEach(([key, val]) => {
@@ -175,7 +177,7 @@ const mkNode = target => new Proxy(target, { set, get });
 const get = (target, prop) =>
     prop == 'target' ? target : target[prop];
 
-const set = (target, prop, value, receiver) => {
+const set = (target, prop, value) => {
     if (prop == 'val') {
         // Node networks care about value equality. Different from
         // channels, if the value is the same nothing happens.
@@ -206,48 +208,77 @@ const allNodesNotNull = nds =>
 
 // Binds a transition to many nodes.
 // It runs whenever any one of the binded nodes change.
-const tran = (nodes, func) => {
+// export const tran = (nodes, func) => {
+//     if (nodes.length > 0) {
+//         const transition = { nodes, func };
+//         // Many transitions with the same tag is not allowed. Tags are
+//         // used as an indentity for dynamically created transitions.
+//         nodes.forEach(nd => {
+//             const ts = nd.target.trans;
+//             if (!ts.has(transition)) {
+//                 ts.add(transition);
+//             }
+//         });
+//         // The transition runs right away if nodes are initialized with
+//         // non null values.
+//         if (allNodesNotNull(nodes)) {
+//             func();
+//         }
+//         return transition;
+//     } else {
+//         return null;
+//     }
+// };
+
+const tranRef = (...args) => {
+    const len = args.length;
+    //const triggerFunc = args[len - 1];
+    const lastElem = args[len - 1];
+    let triggerFunc;
+    let ref;
+    if (isFunction(lastElem)) {
+        triggerFunc = lastElem;
+        ref = null;
+    } else {
+        triggerFunc = args[len - 2];
+        ref = lastElem;
+    }
+    const nodes = args
+        .splice(0, len - 1)
+        .map(x => (isArray(x) ? x : [x]))
+        .reduce((x, y) => x.concat(y));
     if (nodes.length > 0) {
-        const transition = { nodes, func };
+        const aLength = triggerFunc.length;
+        const toGetNodes = [];
+        for (let i = 0; i < aLength; i++) {
+            toGetNodes.push(nodes[i]);
+        }
+        const result = node();
+        const func = () => {
+            if (allNodesNotNull(nodes)) {
+                result.val = triggerFunc(
+                    ...toGetNodes.map(n => n.val)
+                );
+            }
+        };
+        const transition = { nodes, func, ref };
         // Many transitions with the same tag is not allowed. Tags are
         // used as an indentity for dynamically created transitions.
         nodes.forEach(nd => {
             const ts = nd.target.trans;
             if (!ts.has(transition)) {
-                ts.add(transition);
-            }
-        });
-        // The transition runs right away if nodes are initialized with
-        // non null values.
-        if (allNodesNotNull(nodes)) {
-            func();
-        }
-        return transition;
-    } else {
-        return null;
-    }
-};
-
-// Same thing as tran but every transition has a ref attribute in a
-// way thaat only 1 transition with the same 'ref' object can be
-// inside a node. When tranRef is used in  node with a transition with
-// the same ref, the old transition is replaced by the new one. This
-// is useful sometimes
-const tranRef = (ref, nodes, func) => {
-    if (nodes.length > 0) {
-        const transition = { nodes, func, ref };
-        // Many transitions with the same tag is not allowed. Tags are
-        // used as an indentity for dynamically created transitions.
-        nodes.forEach(nd => {
-            const targ = nd.target;
-            const ts = targ.trans;
-            if (!ts.has(transition)) {
-                const res = [...ts].find(t => t.ref == ref);
-                if (res) {
-                    removeTran(res);
-                    ts.add(transition);
+                if (ref) {
+                    const res = [...ts].find(t => t.ref == ref);
+                    if (res) {
+                        removeTran(res);
+                        ts.add(transition);
+                    } else {
+                        ts.add(transition);
+                    }
                 } else {
-                    ts.add(transition);
+                    if (!ts.has(transition)) {
+                        ts.add(transition);
+                    }
                 }
             }
         });
@@ -256,19 +287,120 @@ const tranRef = (ref, nodes, func) => {
         if (allNodesNotNull(nodes)) {
             func();
         }
-        return transition;
+        return { node: result, transition };
     } else {
         return null;
     }
 };
 
-// Only runs if all binded nodes are not null
-const safeTran = (nodes, func) =>
-    tran(nodes, () => {
-        if (allNodesNotNull(nodes)) {
-            func();
+const tran = (...args) => {
+    const { node } = tranRef(...args);
+    return node;
+};
+
+const unsafeTranRef = (...args) => {
+    const len = args.length;
+    //const triggerFunc = args[len - 1];
+    const lastElem = args[len - 1];
+    let triggerFunc;
+    let ref;
+    if (isFunction(lastElem)) {
+        triggerFunc = lastElem;
+        ref = null;
+    } else {
+        triggerFunc = args[len - 2];
+        ref = lastElem;
+    }
+    const nodes = args
+        .splice(0, len - 1)
+        .map(x => (isArray(x) ? x : [x]))
+        .reduce((x, y) => x.concat(y));
+    if (nodes.length > 0) {
+        const aLength = triggerFunc.length;
+        const toGetNodes = [];
+        for (let i = 0; i < aLength; i++) {
+            toGetNodes.push(nodes[i]);
         }
-    });
+        const result = node();
+        const func = () => {
+            result.val = triggerFunc(...toGetNodes.map(n => n.val));
+        };
+        const transition = { nodes, func, ref };
+        // Many transitions with the same tag is not allowed. Tags are
+        // used as an indentity for dynamically created transitions.
+        nodes.forEach(nd => {
+            const ts = nd.target.trans;
+            if (!ts.has(transition)) {
+                if (ref) {
+                    const res = [...ts].find(t => t.ref == ref);
+                    if (res) {
+                        removeTran(res);
+                        ts.add(transition);
+                    } else {
+                        ts.add(transition);
+                    }
+                } else {
+                    if (!ts.has(transition)) {
+                        ts.add(transition);
+                    }
+                }
+            }
+        });
+        // The transition runs right away if nodes are initialized with
+        // non null values.
+        func();
+        return { node: result, transition };
+    } else {
+        return null;
+    }
+};
+
+const unsafeTran = (...args) => {
+    const { node } = unsafeTranRef(...args);
+    return node;
+};
+
+// // Same thing as tran but every transition has a ref attribute in a
+// // way thaat only 1 transition with the same 'ref' object can be
+// // inside a node. When tranRef is used in  node with a transition with
+// // the same ref, the old transition is replaced by the new one. This
+// // is useful sometimes
+// export const tranRef = (ref, nodes, func) => {
+//     if (nodes.length > 0) {
+//         const transition = { nodes, func, ref };
+//         // Many transitions with the same tag is not allowed. Tags are
+//         // used as an indentity for dynamically created transitions.
+//         nodes.forEach(nd => {
+//             const targ = nd.target;
+//             const ts = targ.trans;
+//             if (!ts.has(transition)) {
+//                 const res = [...ts].find(t => t.ref == ref);
+//                 if (res) {
+//                     removeTran(res);
+//                     ts.add(transition);
+//                 } else {
+//                     ts.add(transition);
+//                 }
+//             }
+//         });
+//         // The transition runs right away if nodes are initialized with
+//         // non null values.
+//         if (allNodesNotNull(nodes)) {
+//             func();
+//         }
+//         return transition;
+//     } else {
+//         return null;
+//     }
+// };
+
+// Only runs if all binded nodes are not null
+// export const safeTran = (nodes, func) =>
+//     tran(nodes, () => {
+//         if (allNodesNotNull(nodes)) {
+//             func();
+//         }
+//     });
 
 // Remove a transition from all binded nodes
 const removeTran = transition => {
@@ -282,28 +414,28 @@ const removeTran = transition => {
 const toNode = x => (x.isNode ? x : node(x));
 
 // Create a node from a transition
-const nodeT = (nodes, func, info) => {
-    const aux = node(null, info);
-    tran(nodes, () => {
-        aux.val = func();
-    });
-    return aux;
-};
+// export const nodeT = (nodes, func, info) => {
+//     const aux = node(null, info);
+//     tran(nodes, () => {
+//         aux.val = func();
+//     });
+//     return aux;
+// };
 
-const safeNodeT = (nodes, func, info) => {
-    const aux = node(null, info);
-    safeTran(nodes, () => {
-        aux.val = func();
-    });
-    return aux;
-};
+// export const safeNodeT = (nodes, func, info) => {
+//     const aux = node(null, info);
+//     safeTran(nodes, () => {
+//         aux.val = func();
+//     });
+//     return aux;
+// };
 
 // Similar to nodeT but the function receives values as input
-const mapN = (ns, f, info) =>
-    nodeT(ns, () => f(...ns.map(n => n.val)), info);
+// export const mapN = (ns, f, info) =>
+//     nodeT(ns, () => f(...ns.map(n => n.val)), info);
 
-const safeMapN = (ns, f, info) =>
-    safeNodeT(ns, () => f(...ns.map(n => n.val)), info);
+// export const safeMapN = (ns, f, info) =>
+//     safeNodeT(ns, () => f(...ns.map(n => n.val)), info);
 
 // If a node carries object information, the subNode function creates
 // a 1-way sub-node, that changes when the original node's attribute
@@ -314,8 +446,8 @@ const subNode = (nd, attr) => mapN([nd], x => x[attr]);
 // Like 'subNode' but with 2-way changes. Changing the sub-node
 // changes the parent node as well
 const subNode2 = (nd, attr) => {
-    const aux = mapN([nd], x => x[attr]);
-    tran([aux], () => {
+    const aux = tran(nd, x => x[attr]);
+    tran(aux, () => {
         const val = nd.val;
         val[attr] = aux.val;
         nd.val = val;
@@ -334,7 +466,7 @@ const Tree = (val, children) => {
             if (isArray(children.val)) {
                 ch = children;
             } else {
-                ch = mapN([children], singleton);
+                ch = tran(children, singleton);
             }
         } else {
             if (children.isEntry) {
@@ -356,39 +488,18 @@ const Tree = (val, children) => {
 // Shorthand only
 const T = Tree;
 
-// Maps a function through the rect
-const mapT = f => (tree, path = []) =>
+// (a -> b) -> Tree a -> Tree b
+const mapT = (tree, f, path = []) =>
     Tree(
         f(tree.val, tree, path),
         tree.children.isEntry
             ? tree.children
-            : mapN([tree.children], chs =>
-                  chs.map((ch, i) => mapT(f)(ch, path.concat(i)))
+            : tran(tree.children, chs =>
+                  chs.map((ch, i) => mapT(ch, f, path.concat(i)))
               )
     );
-
-const treePath = (tree, path) => {
-    let res = null;
-    walkT((t, p) => {
-        if (isEqual(p, path)) {
-            res = t;
-        }
-    })(tree);
-    return res;
-};
-
-const getFirst = tree => treePath(tree, []);
-
-// Similar to map but the output does not matter
-const walkT = f => (tree, path = []) => {
-    f(tree.val, path);
-    if (!tree.children.isEntry) {
-        tran([tree.children], () => {
-            const chs = tree.children.val;
-            chs.forEach((ch, i) => walkT(f)(ch, path.concat(i)));
-        });
-    }
-};
+const _mapT = (f, path = []) => tree =>
+    mapT(tree, f, (path = []));
 
 // Special object used to indicate entry-points to flatten Trees of
 // Trees of A into Trees of A (see 'flatten' function)
@@ -397,27 +508,72 @@ const Entry = {
 };
 
 // Substitute an Entry object by children
-const substEntry = (tree, val) => {
+const substEntryByChildren = (tree, val) => {
     if (tree.children.isEntry) {
         tree.children = val;
     } else {
-        tree.children = mapN([tree.children], chs =>
-            chs.map(ch => substEntry(ch, val))
+        tree.children = tran(tree.children, chs =>
+            chs.map(ch => substEntryByChildren(ch, val))
         );
     }
     return tree;
 };
 
+const substChildrenByEntry = (tree, ref) => {
+    let children;
+    if (tree.children == ref) {
+        children = Entry;
+    } else {
+        children = tran(tree.children, chs =>
+            chs.map(ch => substChildrenByEntry(ch, ref))
+        );
+    }
+    return Tree(tree.val, children);
+};
+
+// (Tree a -> Tree b) -> Tree a -> Tree b
+const walkT = (tree, f, state = null, path = []) => {
+    const ans = f(tree, state, path);
+    const isIt = isArray(ans);
+    const res = isIt ? ans[0] : ans;
+    const newState = isIt ? ans[1] : state;
+    const resWithEntry = res
+        ? substChildrenByEntry(res, tree.children)
+        : null;
+    //console.log('ok', resWithEntry, resWithEntry.val.layout.sizAbs);
+    const resChildren = tran(tree.children, chs =>
+        chs.map((ch, i) => walkT(ch, f, newState, path.concat(i)))
+    );
+    return res
+        ? substEntryByChildren(resWithEntry, resChildren)
+        : null;
+};
+const _walkT = (f, state = null, path = []) => tree =>
+    walkT(tree, f, state, path);
+
+const pathT = (tree, path) => {
+    let res = null;
+    walkT(tree, (t, s, p) => {
+        if (isEqual(p, path)) {
+            res = t;
+        }
+    });
+    return res;
+};
+const _pathT = path => tree => pathT(tree, path);
+
+const toStruc = tree => mapT(tree, x => Tree(x, Entry));
+
 // Flattens a Tree of Trees using the Entry special object as an
 // indicator of how to flatten the trees. Really useful for all sorts
 // of transformations.
-const flatten = tree => {
+const fromStruc = tree => {
     const val = tree.val;
     if (val.isTree) {
-        return flatten(substEntry(val, tree.children));
+        return fromStruc(substEntryByChildren(val, tree.children));
     } else {
-        tree.children = mapN([tree.children], chs =>
-            chs.map(flatten)
+        tree.children = tran(tree.children, chs =>
+            chs.map(fromStruc)
         );
         return tree;
     }
@@ -437,24 +593,25 @@ const styleAttrs = {
 };
 
 // Binds CSS properties to nodes
-var addStyle = mapT(r => {
-    if (r.style) {
-        iterate(r.style, ([name, val]) => {
-            const nd = toNode(val);
-            const ans = styleAttrs[name];
-            if (ans) {
-                const tr = ans({
-                    node: nd,
-                    elem: r.inst.dom,
-                    rect: r
-                });
-                const t = tran([nd], tr);
-                r.renderTrans.add(t);
-            }
-        });
-    }
-    return r;
-});
+var addStyle = tree =>
+    mapT(tree, r => {
+        if (r.style) {
+            iterate(r.style, ([name, val]) => {
+                const nd = toNode(val);
+                const ans = styleAttrs[name];
+                if (ans) {
+                    const tr = ans({
+                        node: nd,
+                        elem: r.inst.dom,
+                        rect: r
+                    });
+                    r.tran([nd], tr);
+                    //r.renderTrans.add(t);
+                }
+            });
+        }
+        return r;
+    });
 
 const events = {
     click: ({ elem, channel }) => {
@@ -503,23 +660,24 @@ const events = {
 };
 
 // Binds events to channels
-var addChans = mapT(r => {
-    if (r.events) {
-        iterate(r.events, ([name, ch]) => {
-            if (ch.isChan) {
-                const ans = events[name];
-                if (ans) {
-                    ans({
-                        channel: ch,
-                        elem: r.inst.dom,
-                        rect: r
-                    });
+var addChans = tree =>
+    mapT(tree, r => {
+        if (r.events) {
+            iterate(r.events, ([name, ch]) => {
+                if (ch.isChan) {
+                    const ans = events[name];
+                    if (ans) {
+                        ans({
+                            channel: ch,
+                            elem: r.inst.dom,
+                            rect: r
+                        });
+                    }
                 }
-            }
-        });
-    }
-    return r;
-});
+            });
+        }
+        return r;
+    });
 
 // Channel creation entry point
 const chan = (val, info) =>
@@ -686,7 +844,8 @@ const Rect = def => {
         domEvents: [],
         //renderListens: new Set(),
         data: new WeakMap([[Rect, {}]]),
-        layout: defaultLayout
+        layout: defaultLayout,
+        tran: rectTran
     };
 
     const aux = {};
@@ -709,6 +868,13 @@ const Rect = def => {
         res.layout = mapObj(toNode, res.layout);
     }
     return res;
+};
+
+const rectTran = function(...args) {
+    // this = rect
+    const { transition, node: nd } = tranRef(...args);
+    this.renderTrans.add(transition);
+    return nd;
 };
 
 // Same as Rect, but with isAux = true
@@ -863,13 +1029,12 @@ const scrollRef = {};
 
 const nodes = {
     fullSize: ({ elem, rect, tree, node: fs }) => {
-        const t = tran([tree.children], () => {
+        rect.tran([tree.children], () => {
             const chs = tree.children.val;
             const limits = chs.map(tCh => {
                 const r = tCh.val;
                 const lay = r.layout;
-                const limit = node();
-                tran([lay.posAbs, lay.sizAbs], () => {
+                return tran([lay.posAbs, lay.sizAbs], () => {
                     const limitAbs = vectorPlus(
                         lay.posAbs.val,
                         lay.sizAbs.val
@@ -878,11 +1043,10 @@ const nodes = {
                         lay.pos.val,
                         lay.siz.val
                     );
-                    limit.val = [limitAbs, limitLen];
+                    return [limitAbs, limitLen];
                 });
-                return limit;
             });
-            safeTran(limits, () => {
+            tran(limits, () => {
                 fs.val = copyCoord(
                     limits
                         .map(l => l.val)
@@ -901,7 +1065,7 @@ const nodes = {
                 );
             });
         });
-        rect.renderTrans.add(t);
+        //rect.renderTrans.add(t);
     },
     fullSizeCor: ({ elem, rect, tree, node: fsc }) => {
         const fs = node();
@@ -909,7 +1073,7 @@ const nodes = {
         const siz = rect.layout.sizAbs;
         const sca = rect.layout.scale;
         const pSiz = rect.inst.par.layout.sizAbs;
-        tran([fs, siz, pSiz, sca], () => {
+        rect.tran([fs, siz, pSiz, sca], () => {
             const [[fsrx, fsry], [fspx, fspy]] = splitCoord(fs.val);
             const [sx, sy] = siz.val;
             const [psx, psy] = pSiz.val;
@@ -923,15 +1087,15 @@ const nodes = {
         addEvent(rect, 'scroll', () => {
             scroll.val = [elem.scrollLeft, elem.scrollTop];
         });
-        const t = tran([scroll], () => {
+        rect.tran([scroll], () => {
             const [l, t] = scroll.val;
             elem.scrollLeft = l;
             elem.scrollTop = t;
         });
-        rect.renderTrans.add(t);
+        //rect.renderTrans.add(t);
     },
     scroll: ({ elem, rect, node: scroll }) => {
-        const limN = mapN([rect.layout.sizAbs], siz => {
+        const limN = rect.tran([rect.layout.sizAbs], siz => {
             const w = elem.scrollWidth;
             const h = elem.scrollHeight;
             const sw = Math.round(siz[0]);
@@ -948,41 +1112,46 @@ const nodes = {
                 lim[1] === 0 ? 0 : 100 * (elem.scrollTop / lim[1])
             ];
         });
-        const t = tranRef(scrollRef, [scroll], () => {
-            const [l, t] = scroll.val;
-            const lim = limN.val;
-            const res = [
-                Math.round((l / 100) * lim[0]),
-                Math.round((t / 100) * lim[1])
-            ];
-            if (elem.scrollLeft != res[0]) {
-                elem.scrollLeft = res[0];
-            }
-            if (elem.scrollTop != res[1]) {
-                elem.scrollTop = res[1];
-            }
-        });
-        rect.renderTrans.add(t);
+        rect.tran(
+            [scroll],
+            () => {
+                const [l, t] = scroll.val;
+                const lim = limN.val;
+                const res = [
+                    Math.round((l / 100) * lim[0]),
+                    Math.round((t / 100) * lim[1])
+                ];
+                if (elem.scrollLeft != res[0]) {
+                    elem.scrollLeft = res[0];
+                }
+                if (elem.scrollTop != res[1]) {
+                    elem.scrollTop = res[1];
+                }
+            },
+            scrollRef
+        );
+        //rect.renderTrans.add(t);
     }
 };
 
-var addNodes = mapT((r, t) => {
-    if (r.nodes) {
-        iterate(r.nodes, ([name, val]) => {
-            const nd = name == 'fullSize' ? val : toNode(val);
-            const ans = nodes[name];
-            if (ans) {
-                ans({
-                    node: nd,
-                    elem: r.inst.dom,
-                    rect: r,
-                    tree: t
-                });
-            }
-        });
-    }
-    return r;
-});
+var addNodes = tree =>
+    mapT(tree, (r, t) => {
+        if (r.nodes) {
+            iterate(r.nodes, ([name, val]) => {
+                const nd = name == 'fullSize' ? val : toNode(val);
+                const ans = nodes[name];
+                if (ans) {
+                    ans({
+                        node: nd,
+                        elem: r.inst.dom,
+                        rect: r,
+                        tree: t
+                    });
+                }
+            });
+        }
+        return r;
+    });
 
 // A set of functions for easy Tree of Rect manipulation
 
@@ -1016,7 +1185,7 @@ const addLayoutTriggers = (layout, elem, rect, parLayout) => {
     const scaN = parLayout.scale;
 
     const posN = layout.pos;
-    const posT = tran([posN, scaN], () => {
+    rect.tran([posN, scaN], () => {
         const [posRel, posPx] = splitCoord(posN.val);
         const sca = scaN.val;
         elem.style.left = `calc(${posRel[0] * sca[0]}% + ${
@@ -1026,10 +1195,10 @@ const addLayoutTriggers = (layout, elem, rect, parLayout) => {
             posPx[1]
         }px)`;
     });
-    rect.renderTrans.add(posT);
+    //rect.renderTrans.add(posT);
 
     const sizN = layout.siz;
-    const sizT = tran([sizN, scaN], () => {
+    rect.tran([sizN, scaN], () => {
         const [sizRel, sizPx] = splitCoord(sizN.val);
         const sca = scaN.val;
         elem.style.width = `calc(${sizRel[0] * sca[0]}% + ${
@@ -1039,13 +1208,14 @@ const addLayoutTriggers = (layout, elem, rect, parLayout) => {
             sizPx[1]
         }px)`;
     });
-    rect.renderTrans.add(sizT);
+    //rect.renderTrans.add(sizT);
 };
 
 // Rect's default layout reactivity updates posAbs and sizAbs whenever
 // max, siz or pos changes. posAbs and sizAbs should not be changed
 // directly
 const defaultLayoutReactivity = (
+    rect,
     posN, // rect's relative position node
     sizN, // rect's relative size node
     pScaleN, // parent's max node
@@ -1054,7 +1224,7 @@ const defaultLayoutReactivity = (
     posAbsN, // rect's absolute position
     sizAbsN // rect's absolute size
 ) =>
-    safeMapN(
+    tran(
         [posN, sizN, pScaleN, pPosAbsN, pSizAbsN],
         (pos, siz, pScale, pPosAbs, pSizAbs) => {
             const [posRel, posPx] = splitCoord(pos);
@@ -2030,13 +2200,13 @@ const runRect = rectT => {
             dom: document.body
         }
     };
-
+    window.j = sizAbs;
     window.onresize = () => {
         sizAbs.val = getDeviceSize();
     };
     // Flattens tree so that Trees of Trees of ... Trees of Rects
     // become just Trees of Rects
-    return runInside(flatten(rectT), parent);
+    return runInside(fromStruc(rectT), parent);
 };
 
 // Similar to runRect, but runs inside any DOM element. Uses
@@ -2064,7 +2234,7 @@ const runRectDOM = (rectT, dom) => {
     }).observe(dom);
     // Flattens tree so that Trees of Trees of ... Trees of Rects
     // become just Trees of Rects
-    return runInside(flatten(rectT), parent);
+    return runInside(fromStruc(rectT), parent);
 };
 
 // Main run function
@@ -2085,6 +2255,7 @@ const runInside = (rectT, parent) => {
     addLayoutTriggers(lay, elem, rect, parent.layout);
     // Adds (default) resize reactivity to the rect
     defaultLayoutReactivity(
+        rect,
         lay.pos,
         lay.siz,
         parent.layout.scale,
@@ -2113,7 +2284,7 @@ const runInside = (rectT, parent) => {
 // If a child is dynamically removed/added from the children node's
 // array its DOM element is removed/created.
 const addChildrenTrigger = (children, parent) => {
-    const t = tran([children], () => {
+    parent.tran(children, () => {
         let neu = children.val;
         let alt = children.old;
         if (!alt) alt = [];
@@ -2123,7 +2294,7 @@ const addChildrenTrigger = (children, parent) => {
         created.forEach(x => runInside(x, parent));
         removed.forEach(x => removeRect(x));
     });
-    parent.renderTrans.add(t);
+    //parent.renderTrans.add(t);
 };
 
 // Removes a rect, meaning its DOM is destroyed and events and node
@@ -2178,62 +2349,133 @@ const addDabrCss = elem => {
     elem.style['overflow-x'] = 'scroll';
 };
 
-const border = b => rect => {
+// export const border = b => rect => {
+//     const innerPos = node();
+//     const innerSiz = node();
+//     const color = mapN([b], ({ color }) => color);
+//     const width = mapN([b], ({ width }) => width);
+//     tran([width], () => {
+//         const w = width.val;
+//         innerPos.val = [px(w), px(w)]; //len([0, 0], [w, w]);
+//         innerSiz.val = [len(100, -2 * w), len(100, -2 * w)]; //len([100, 100], [-2 * w, -2 * w]);
+//     });
+//     return Tree(
+//         Supp({
+//             layout: {
+//                 pos: rect.layout.pos,
+//                 siz: rect.layout.siz
+//             },
+//             data: keyed(border, {
+//                 node: b,
+//                 outter: true,
+//                 inner: false
+//             }),
+//             style: {
+//                 color: color
+//             }
+//         }),
+//         [
+//             Tree(
+//                 preserveR(rect, {
+//                     layout: {
+//                         pos: innerPos,
+//                         siz: innerSiz
+//                     },
+//                     data: keyed(border, {
+//                         node: b,
+//                         inner: true,
+//                         outter: false
+//                     })
+//                 }),
+//                 Entry
+//             )
+//         ]
+//     );
+// };
+
+const border = (b, tree) => {
+    const rect = tree.val;
     const innerPos = node();
     const innerSiz = node();
-    const color = mapN([b], ({ color }) => color);
-    const width = mapN([b], ({ width }) => width);
+    const color = tran(b, ({ color }) => color);
+    const width = tran(b, ({ width }) => width);
     tran([width], () => {
         const w = width.val;
-        innerPos.val = [px(w), px(w)]; //len([0, 0], [w, w]);
-        innerSiz.val = [len(100, -2 * w), len(100, -2 * w)]; //len([100, 100], [-2 * w, -2 * w]);
+        innerSiz.val = [len(100, -2 * w), len(100, -2 * w)];
+        innerPos.val = [px(w), px(w)];
+    });
+    const s = Supp({
+        layout: {
+            pos: rect.layout.pos,
+            siz: rect.layout.siz
+        },
+        data: keyed(border, {
+            node: b,
+            outter: true,
+            inner: false
+        }),
+        style: {
+            color: color
+        }
     });
     return Tree(
-        Supp({
-            layout: {
-                pos: rect.layout.pos,
-                siz: rect.layout.siz
-            },
-            data: keyed(border, {
-                node: b,
-                outter: true,
-                inner: false
+        s,
+        Tree(
+            preserveR(rect, {
+                layout: {
+                    pos: innerPos,
+                    siz: innerSiz
+                },
+                data: keyed(border, {
+                    node: b,
+                    inner: true,
+                    outter: false
+                })
             }),
-            style: {
-                color: color
-            }
-        }),
-        [
-            Tree(
-                preserveR(rect, {
-                    layout: {
-                        pos: innerPos,
-                        siz: innerSiz
-                    },
-                    data: keyed(border, {
-                        node: b,
-                        inner: true,
-                        outter: false
-                    })
-                }),
-                Entry
-            )
-        ]
+            tree.children
+        )
     );
 };
 
-const container = show => rect =>
+const _border = b => tree => border(b, tree);
+
+// export const container = show => rect =>
+//     Tree(
+//         Dummy({
+//             data: keyed(container, show),
+//             style: {
+//                 show
+//             }
+//         }),
+//         [Tree(rect, Entry)]
+//     );
+
+const container = (show, tree) =>
     Tree(
         Dummy({
+            layout: {
+                pos: tree.val.layout.pos,
+                siz: tree.val.layout.siz
+            },
             data: keyed(container, show),
             style: {
                 show
             }
         }),
-        [Tree(rect, Entry)]
+        Tree(
+            preserveR(tree.val, {
+                layout: {
+                    pos: [0, 0],
+                    siz: [100, 100]
+                }
+            }),
+            tree.children
+        )
     );
 
-const proportional = prop => rect => {
+const _container = show => tree => container(show, tree);
+
+const proportional = (prop, tree) => {
     const innerPos = node();
     const innerSiz = node();
     const data = keyed(proportional, {
@@ -2241,36 +2483,34 @@ const proportional = prop => rect => {
         outter: true,
         inner: false
     });
-    const propRect = preserveR(rect, {
+    const rect = tree.val;
+    const sizAbs = node();
+    const supp = Supp({
         layout: {
-            pos: innerPos,
-            siz: innerSiz
+            pos: rect.layout.pos,
+            siz: rect.layout.siz,
+            sizAbs
         },
         data
     });
-    listenOnce([propRect.init], () => {
-        const par = propRect.inst.par;
-        const sizAbs = par.layout.sizAbs;
-        tran([prop, sizAbs], () => {
-            const [offset, newSize] = calcProportional(
-                prop.val,
-                sizAbs.val
-            );
-            innerPos.val = [px(offset[0]), px(offset[1])];
-            innerSiz.val = [px(newSize[0]), px(newSize[1])];
-        });
+    const newRect = preserveR(rect, {
+        layout: {
+            pos: innerPos, //[0, 0],
+            siz: innerSiz //[100, 100]
+        }
     });
-    return SuppT(
-        {
-            layout: {
-                pos: rect.layout.pos,
-                siz: rect.layout.siz
-            },
-            data
-        },
-        Tree(propRect, Entry)
-    );
+    tran([prop, sizAbs], () => {
+        const [offset, newSize] = calcProportional(
+            prop.val,
+            sizAbs.val
+        );
+        innerPos.val = [px(offset[0]), px(offset[1])];
+        innerSiz.val = [px(newSize[0]), px(newSize[1])];
+    });
+    return Tree(supp, Tree(newRect, tree.children));
 };
+
+const _proportional = prop => tree => proportional(prop, tree);
 
 const calcProportional = (prop, siz) => {
     let w = siz[0];
@@ -2312,12 +2552,54 @@ const calcProportional = (prop, siz) => {
     return [offset, s];
 };
 
+// const switcher = (route, routeRectMap) => {
+//     const children = node();
+//     const routeMap = mapValuesObj(routeRectMap, val => {
+//         const destroy = val.destroy ? val.destroy : false;
+//         const show = node(false);
+//         const rectT = top(container(show))(val.content || val);
+//         return {
+//             show,
+//             rectT,
+//             destroy
+//         };
+//     });
+//     const siz = node([100, 100]);
+//     tran([route], () => {
+//         const newRoute = route.val;
+//         children.val = iterate(routeMap, ([rou, val]) => {
+//             const { show, rectT, destroy } = val;
+//             if (rou == newRoute) {
+//                 show.val = true;
+//                 return rectT;
+//             } else if (destroy) {
+//                 return null;
+//             } else {
+//                 show.val = false;
+//                 return rectT;
+//             }
+//         }).filter(isNotNull);
+//         // hack to fiz some problems when switch happens
+//         siz.val = [{ rel: 100, px: 0.01 }, 100];
+//         siz.val = [100, 100];
+//     });
+//     return Tree(
+//         Rect({
+//             layout: {
+//                 pos: [0, 0],
+//                 siz
+//             }
+//         }),
+//         children
+//     );
+// };
+
 const switcher = (route, routeRectMap) => {
     const children = node();
     const routeMap = mapValuesObj(routeRectMap, val => {
         const destroy = val.destroy ? val.destroy : false;
         const show = node(false);
-        const rectT = top(container(show))(val.content || val);
+        const rectT = container(show, val.content || val);
         return {
             show,
             rectT,
@@ -2344,7 +2626,7 @@ const switcher = (route, routeRectMap) => {
         siz.val = [100, 100];
     });
     return Tree(
-        Rect({
+        Supp({
             layout: {
                 pos: [0, 0],
                 siz
@@ -2789,7 +3071,7 @@ const text = textNode => rect => {
     const textDom = node();
     rect.data.set(text, { size: textSize, dom: textDom });
     listenOnce([rect.init], () => {
-        mapN(
+        tran(
             [textNode],
             ({
                 color,
@@ -2824,6 +3106,7 @@ const text = textNode => rect => {
         tran([rect.layout.sizAbs, textNode], () => {
             const div = textDom.val;
             const newSize = [div.offsetWidth, div.offsetHeight];
+            console.log('hmmmm', newSize);
             if (newSize[0] != 0 && newSize[1] != 0) {
                 textSize.val = newSize;
             }
@@ -2835,7 +3118,7 @@ const text = textNode => rect => {
 const paragraph = (textNode, rect) => {
     const res = text(textNode)(rect);
     const { size: textSize } = res.data.get(text);
-    safeTran([textSize], () => {
+    tran([textSize], () => {
         const [, h] = asPx(textSize.val);
         const [w] = res.layout.siz.val;
         res.layout.siz.val = [w, h];
@@ -2893,7 +3176,58 @@ const getSizeOf16pxText = ({
     return [w, h];
 };
 
-const linesTemplate = justify => textNs => rect => {
+// export const linesTemplate = justify => textNs => rect => {
+//     const prop = node();
+//     const sizes = [];
+//     textNs.forEach((_, i) => {
+//         sizes[i] = node();
+//     });
+//     tran(textNs, () => {
+//         const sizs = textNs.map(tn => getSizeOf16pxText(tn.val));
+//         sizs.forEach((siz, i) => {
+//             sizes[i].val = siz;
+//         });
+//         const sizsX = sizs.map(([x]) => x);
+//         const sizsY = sizs.map(([, y]) => y);
+//         const w = sizsX.reduce((sx, sy) => Math.max(sx, sy));
+//         const h = sizsY.reduce((sx, sy) => sx + sy);
+//         prop.val = [w, h];
+//     });
+//     const fontSize = node();
+//     const n = textNs.length;
+//     const children = textNs.map((textN, i) => {
+//         const fullTextN = nodeT([textN, fontSize], () => ({
+//             ...textN.val,
+//             ...{ size: fontSize.val, whiteSpace: 'nowrap' }
+//         }));
+//         const stepSiz = (i / n) * 100;
+//         const siz = safeMapN([sizes[i], prop], ([w, h], [pw, ph]) => [
+//             (w / pw) * 100,
+//             (1 / n) * 100
+//         ]);
+//         const post = justify(siz, stepSiz);
+//         const r = Supp({
+//             layout: {
+//                 pos: post,
+//                 siz
+//             }
+//         });
+//         return Tree(text(fullTextN)(r));
+//     });
+//     const chSizs = children.map(ch => ch.val.layout.sizAbs);
+//     safeTran(chSizs.concat([prop]), () => {
+//         const currentSizeX = chSizs
+//             .map(x => x.val[0])
+//             .reduce((x, y) => Math.max(x, y));
+//         const size16pxX = prop.val[0];
+//         const newSize = smooth((currentSizeX / size16pxX) * 16);
+//         fontSize.val = newSize + 'px';
+//     });
+//     const res = Tree(proportional(prop)(rect), children);
+//     return res;
+// };
+
+const linesTemplate = justify => textNs => tree => {
     const prop = node();
     const sizes = [];
     textNs.forEach((_, i) => {
@@ -2913,12 +3247,12 @@ const linesTemplate = justify => textNs => rect => {
     const fontSize = node();
     const n = textNs.length;
     const children = textNs.map((textN, i) => {
-        const fullTextN = nodeT([textN, fontSize], () => ({
+        const fullTextN = tran([textN, fontSize], () => ({
             ...textN.val,
             ...{ size: fontSize.val, whiteSpace: 'nowrap' }
         }));
         const stepSiz = (i / n) * 100;
-        const siz = safeMapN([sizes[i], prop], ([w, h], [pw, ph]) => [
+        const siz = tran([sizes[i], prop], ([w, h], [pw, ph]) => [
             (w / pw) * 100,
             (1 / n) * 100
         ]);
@@ -2932,7 +3266,8 @@ const linesTemplate = justify => textNs => rect => {
         return Tree(text(fullTextN)(r));
     });
     const chSizs = children.map(ch => ch.val.layout.sizAbs);
-    safeTran(chSizs.concat([prop]), () => {
+    window.l = chSizs[0];
+    tran(chSizs.concat([prop]), () => {
         const currentSizeX = chSizs
             .map(x => x.val[0])
             .reduce((x, y) => Math.max(x, y));
@@ -2940,16 +3275,25 @@ const linesTemplate = justify => textNs => rect => {
         const newSize = smooth((currentSizeX / size16pxX) * 16);
         fontSize.val = newSize + 'px';
     });
-    const res = Tree(proportional(prop)(rect), children);
-    return res;
+    const propRes = proportional(prop, Tree(tree.val, children));
+    return propRes;
 };
+
+// export const linesL = linesTemplate((siz, step) => node([0, step]));
+// export const linesR = linesTemplate((siz, step) =>
+//     mapN([siz], ([sx, sy]) => [100 - sx, step])
+// );
+// export const linesC = linesTemplate((siz, step) =>
+//     mapN([siz], ([sx, sy]) => [(100 - sx) / 2, step])
+// );
+// export const line = textNode => linesL([textNode]);
 
 const linesL = linesTemplate((siz, step) => node([0, step]));
 const linesR = linesTemplate((siz, step) =>
-    mapN([siz], ([sx, sy]) => [100 - sx, step])
+    tran([siz], ([sx, sy]) => [100 - sx, step])
 );
 const linesC = linesTemplate((siz, step) =>
-    mapN([siz], ([sx, sy]) => [(100 - sx) / 2, step])
+    tran([siz], ([sx, sy]) => [(100 - sx) / 2, step])
 );
 const line = textNode => linesL([textNode]);
 
@@ -2980,7 +3324,7 @@ const vertical = listOfRectTrees => {
 const horizontal = listOfRectTrees => {
     listOfRectTrees.reduce(
         (t1, t2) => {
-            safeTran([t1.val.layout.pos, t1.val.layout.siz], () => {
+            tran([t1.val.layout.pos, t1.val.layout.siz], () => {
                 const pos = t1.val.layout.pos.val;
                 const siz = t1.val.layout.siz.val;
                 const x = addCoord(pos, siz);
@@ -3010,10 +3354,10 @@ const space = s =>
     });
 
 const verticalSpace = vSpace =>
-    space(mapN([vSpace], y => [0, y]));
+    space(tran([vSpace], y => [0, y]));
 
 const horizontalSpace = hSpace =>
-    space(mapN([hSpace], x => [x, 0]));
+    space(tran([hSpace], x => [x, 0]));
 
 const setParentScale = rect => {
     listenOnce([rect.init], () => {
@@ -3085,7 +3429,7 @@ const flex = rect => {
 
 const flexX = rect => {
     const s = node([100, 100]);
-    const siz = mapN([s, rect.layout.siz], ([x], [, y]) => [x, y]);
+    const siz = tran([s, rect.layout.siz], ([x], [, y]) => [x, y]);
     listenOnce([rect.init], () => {
         rect.inst.dom.style['overflow'] = 'hidden';
     });
@@ -3103,7 +3447,7 @@ const flexX = rect => {
 
 const flexY = rect => {
     const s = node([100, 100]);
-    const siz = mapN([s, rect.layout.siz], ([, y], [x]) => [x, y]);
+    const siz = tran([s, rect.layout.siz], ([, y], [x]) => [x, y]);
     listenOnce([rect.init], () => {
         rect.inst.dom.style['overflow'] = 'hidden';
     });
@@ -3119,4 +3463,4 @@ const flexY = rect => {
     );
 };
 
-export { Dummy, EXPONENTIAL, Entry, FLIP, LINEAR, QUADRATIC, Rect, RectT, Supp, SuppT, T, Tree, addChans, addCoord, addEvent, addLayoutTriggers, addLen, addNodes, addStyle, applyF, asPx, border, chan, chanL, cond, condElse, container, copyCoord, copyLen, core, defaultLayoutReactivity, filterC, flatten, flex, flexX, flexY, getFirst, getPx, getRel, hashNode, horizontal, horizontalSpace, keyed, len, line, linesC, linesL, linesR, linesTemplate, listen, listenOnce, listenRef, mapC, mapN, mapT, mulCoord, mulLen, node, nodeT, paragraph, preserveR, proportional, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, safeMapN, safeNodeT, safeTran, scrollbar, space, splitCoord, stopTimed, subNode, subNode2, supp, switcher, text, timed, toNode, top, tran, tranRef, tree, treePath, vertical, verticalSpace, walkT };
+export { Dummy, EXPONENTIAL, Entry, FLIP, LINEAR, QUADRATIC, Rect, RectT, Supp, SuppT, T, Tree, _border, _container, _mapT, _pathT, _proportional, _walkT, addChans, addCoord, addEvent, addLayoutTriggers, addLen, addNodes, addStyle, applyF, asPx, border, chan, chanL, cond, condElse, container, copyCoord, copyLen, core, defaultLayoutReactivity, filterC, flex, flexX, flexY, fromStruc, getPx, getRel, hashNode, horizontal, horizontalSpace, keyed, len, line, linesC, linesL, linesR, linesTemplate, listen, listenOnce, listenRef, mapC, mapT, mulCoord, mulLen, node, paragraph, pathT, preserveR, proportional, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, scrollbar, space, splitCoord, stopTimed, subNode, subNode2, supp, switcher, text, timed, toNode, toStruc, top, tran, tranRef, tree, unsafeTran, unsafeTranRef, vertical, verticalSpace, walkT };

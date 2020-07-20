@@ -1,5 +1,5 @@
 import { isArray, isEqual, singleton } from './utils/index.js';
-import { node, tran, mapN, toNode } from './node.js';
+import { node, tran, toNode } from './node.js';
 
 // A tree of anything in which every children are actually nodes (DABR
 // nodes). You can define children as an array or only 1 element and
@@ -12,7 +12,7 @@ export const Tree = (val, children) => {
             if (isArray(children.val)) {
                 ch = children;
             } else {
-                ch = mapN([children], singleton);
+                ch = tran(children, singleton);
             }
         } else {
             if (children.isEntry) {
@@ -34,39 +34,18 @@ export const Tree = (val, children) => {
 // Shorthand only
 export const T = Tree;
 
-// Maps a function through the rect
-export const mapT = f => (tree, path = []) =>
+// (a -> b) -> Tree a -> Tree b
+export const mapT = (tree, f, path = []) =>
     Tree(
         f(tree.val, tree, path),
         tree.children.isEntry
             ? tree.children
-            : mapN([tree.children], chs =>
-                  chs.map((ch, i) => mapT(f)(ch, path.concat(i)))
+            : tran(tree.children, chs =>
+                  chs.map((ch, i) => mapT(ch, f, path.concat(i)))
               )
     );
-
-export const treePath = (tree, path) => {
-    let res = null;
-    walkT((t, p) => {
-        if (isEqual(p, path)) {
-            res = t;
-        }
-    })(tree);
-    return res;
-};
-
-export const getFirst = tree => treePath(tree, []);
-
-// Similar to map but the output does not matter
-export const walkT = f => (tree, path = []) => {
-    f(tree.val, path);
-    if (!tree.children.isEntry) {
-        tran([tree.children], () => {
-            const chs = tree.children.val;
-            chs.forEach((ch, i) => walkT(f)(ch, path.concat(i)));
-        });
-    }
-};
+export const _mapT = (f, path = []) => tree =>
+    mapT(tree, f, (path = []));
 
 // Special object used to indicate entry-points to flatten Trees of
 // Trees of A into Trees of A (see 'flatten' function)
@@ -75,27 +54,72 @@ export const Entry = {
 };
 
 // Substitute an Entry object by children
-const substEntry = (tree, val) => {
+const substEntryByChildren = (tree, val) => {
     if (tree.children.isEntry) {
         tree.children = val;
     } else {
-        tree.children = mapN([tree.children], chs =>
-            chs.map(ch => substEntry(ch, val))
+        tree.children = tran(tree.children, chs =>
+            chs.map(ch => substEntryByChildren(ch, val))
         );
     }
     return tree;
 };
 
+const substChildrenByEntry = (tree, ref) => {
+    let children;
+    if (tree.children == ref) {
+        children = Entry;
+    } else {
+        children = tran(tree.children, chs =>
+            chs.map(ch => substChildrenByEntry(ch, ref))
+        );
+    }
+    return Tree(tree.val, children);
+};
+
+// (Tree a -> Tree b) -> Tree a -> Tree b
+export const walkT = (tree, f, state = null, path = []) => {
+    const ans = f(tree, state, path);
+    const isIt = isArray(ans);
+    const res = isIt ? ans[0] : ans;
+    const newState = isIt ? ans[1] : state;
+    const resWithEntry = res
+        ? substChildrenByEntry(res, tree.children)
+        : null;
+    //console.log('ok', resWithEntry, resWithEntry.val.layout.sizAbs);
+    const resChildren = tran(tree.children, chs =>
+        chs.map((ch, i) => walkT(ch, f, newState, path.concat(i)))
+    );
+    return res
+        ? substEntryByChildren(resWithEntry, resChildren)
+        : null;
+};
+export const _walkT = (f, state = null, path = []) => tree =>
+    walkT(tree, f, state, path);
+
+export const pathT = (tree, path) => {
+    let res = null;
+    walkT(tree, (t, s, p) => {
+        if (isEqual(p, path)) {
+            res = t;
+        }
+    });
+    return res;
+};
+export const _pathT = path => tree => pathT(tree, path);
+
+export const toStruc = tree => mapT(tree, x => Tree(x, Entry));
+
 // Flattens a Tree of Trees using the Entry special object as an
 // indicator of how to flatten the trees. Really useful for all sorts
 // of transformations.
-export const flatten = tree => {
+export const fromStruc = tree => {
     const val = tree.val;
     if (val.isTree) {
-        return flatten(substEntry(val, tree.children));
+        return fromStruc(substEntryByChildren(val, tree.children));
     } else {
-        tree.children = mapN([tree.children], chs =>
-            chs.map(flatten)
+        tree.children = tran(tree.children, chs =>
+            chs.map(fromStruc)
         );
         return tree;
     }

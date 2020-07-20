@@ -1,6 +1,6 @@
-import { node, tran, mapN } from '../node.js';
+import { node, tran } from '../node.js';
 import { listen, chan } from '../channel.js';
-import { Tree, Entry } from '../tree.js';
+import { Tree } from '../tree.js';
 import { Rect, preserveR, Dummy } from '../rect.js';
 import { RectT } from '../rect-tree.js';
 import { len } from '../coord.js';

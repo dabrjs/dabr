@@ -1,16 +1,10 @@
-import {
-    node,
-    tran,
-    removeTran,
-    safeTran,
-    safeMapN
-} from './node.js';
+import { node, tran, removeTran } from './node.js';
 import { isNull, copyArray } from './utils/index.js';
 import {
     addLayoutTriggers,
     defaultLayoutReactivity
 } from './layout.js';
-import { flatten } from './tree.js';
+import { fromStruc } from './tree.js';
 import addStyle from './style/index.js';
 import addChans from './events/index.js';
 import addNodes from './nodes/index.js';
@@ -48,13 +42,13 @@ export const runRect = rectT => {
             dom: document.body
         }
     };
-
+    window.j = sizAbs;
     window.onresize = () => {
         sizAbs.val = getDeviceSize();
     };
     // Flattens tree so that Trees of Trees of ... Trees of Rects
     // become just Trees of Rects
-    return runInside(flatten(rectT), parent);
+    return runInside(fromStruc(rectT), parent);
 };
 
 // Similar to runRect, but runs inside any DOM element. Uses
@@ -82,7 +76,7 @@ export const runRectDOM = (rectT, dom) => {
     }).observe(dom);
     // Flattens tree so that Trees of Trees of ... Trees of Rects
     // become just Trees of Rects
-    return runInside(flatten(rectT), parent);
+    return runInside(fromStruc(rectT), parent);
 };
 
 const findReference = parents => {
@@ -113,6 +107,7 @@ const runInside = (rectT, parent) => {
     addLayoutTriggers(lay, elem, rect, parent.layout);
     // Adds (default) resize reactivity to the rect
     defaultLayoutReactivity(
+        rect,
         lay.pos,
         lay.siz,
         parent.layout.scale,
@@ -141,7 +136,7 @@ const runInside = (rectT, parent) => {
 // If a child is dynamically removed/added from the children node's
 // array its DOM element is removed/created.
 const addChildrenTrigger = (children, parent) => {
-    const t = tran([children], () => {
+    parent.tran(children, () => {
         let neu = children.val;
         let alt = children.old;
         if (!alt) alt = [];
@@ -151,7 +146,7 @@ const addChildrenTrigger = (children, parent) => {
         created.forEach(x => runInside(x, parent));
         removed.forEach(x => removeRect(x));
     });
-    parent.renderTrans.add(t);
+    //parent.renderTrans.add(t);
 };
 
 // Removes a rect, meaning its DOM is destroyed and events and node

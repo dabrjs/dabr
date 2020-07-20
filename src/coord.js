@@ -1,12 +1,9 @@
 import { isNotNull, copyObj } from './utils/index.js';
-import { mapN } from './node.js';
 
 export const len = (rel, px) => ({
     rel,
     px
 });
-
-//export const rel = r => len(r, 0);
 
 export const px = p => len(0, p);
 
@@ -32,38 +29,6 @@ export const mulCoord = (s, c) => [mulLen(s, c[0]), mulLen(s, c[1])];
 export const getPx = l => (isNotNull(l.px) ? l.px : 0);
 
 export const getRel = l => (isNotNull(l.rel) ? l.rel : l);
-
-// const absToRel = (pSizAbs, pMax, px) =>
-//     (px * getRel(pMax)) / (pSizAbs - getPx(pMax));
-
-// const absToPx = (pSizAbs, pMax, rel) =>
-//     (rel * (pSizAbs - getPx(pMax))) / getRel(pMax);
-
-// export const lenToRel = (pSizAbs, pMax, l) => {
-//     if (isNotNull(l.rel)) {
-//         return l.rel + absToRel(pSizAbs, pMax, l.px);
-//     } else {
-//         return l;
-//     }
-// };
-
-// export const lenToPx = (pSizAbs, pMax, l) => {
-//     if (isNotNull(l.rel)) {
-//         return l.px + absToPx(pSizAbs, pMax, l.rel);
-//     } else {
-//         return absToPx(pSizAbs, pMax, l);
-//     }
-// };
-
-// export const coordToRel = ([psX, psY], [pmX, pmY], [cX, cY]) => [
-//     lenToRel(psX, pmX, cX),
-//     lenToRel(psY, pmY, cY)
-// ];
-
-// export const coordToPx = ([psX, psY], [pmX, pmY], [cX, cY]) => [
-//     lenToPx(psX, pmX, cX),
-//     lenToPx(psY, pmY, cY)
-// ];
 
 export const splitCoord = ([x, y]) => [
     [getRel(x), getRel(y)],
