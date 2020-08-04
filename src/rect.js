@@ -6,8 +6,9 @@ import {
     isWeakMap,
     isObj
 } from './utils/index.js';
-import { node, toNode, tranRef } from './node.js';
-import { chan } from './channel.js';
+import { node, toNode, tranRef, unsafeTranRef } from './node.js';
+import { listenRef, listenOnce, chan } from './channel.js';
+import { coord } from './coord.js';
 
 // Creates the staindard Rect interface, which is a standard set of
 // attrs transformations/functions can rely on. Doc:
@@ -49,13 +50,19 @@ import { chan } from './channel.js';
 //     inner rects. Default is [1,1]
 //   layout.pos: relative position length. Obligatory in any rect.
 //   layout.siz: relative size length. Obligatory in any rect.
-export const Rect = def => {
+export const Rect = (def = {}) => {
     const defaultLayout = {
-        pos: node(),
-        siz: node(),
+        pos: coord([0, 0]),
+        siz: coord([100, 100]),
         posAbs: node(),
         sizAbs: node(),
-        scale: node([1, 1])
+        scale: coord([1, 1]),
+        disablePos: node(false),
+        disableSiz: node(false),
+        posChanged: chan(),
+        sizChanged: chan(),
+        posAbsChanged: chan(),
+        sizAbsChanged: chan()
     };
 
     const defaultRectAttrs = {
@@ -68,12 +75,22 @@ export const Rect = def => {
         created: node(),
         removed: node(),
         inst: null,
-        renderTrans: new Set(),
+        transitions: new Set(),
+        listeners: new Set(),
         domEvents: [],
         //renderListens: new Set(),
         data: new WeakMap([[Rect, {}]]),
         layout: defaultLayout,
-        tran: rectTran
+        tran: rectTran,
+        tranRef: rectTranRef,
+        listen: rectListen,
+        listenRef: rectListenRef,
+        unsafeTran: rectUnsafeTran,
+        unsafeTranRef: rectUnsafeTranRef,
+        addEvent: addEvent,
+        withInst,
+        withDOM,
+        withPar
     };
 
     const aux = {};
@@ -93,7 +110,10 @@ export const Rect = def => {
 
     const res = concatObj(defaultRectAttrs, def, aux);
     if (res.layout) {
-        res.layout = mapObj(toNode, res.layout);
+        res.layout = mapObj(
+            x => (x.isChan ? x : toNode(x)),
+            res.layout
+        );
     }
     return res;
 };
@@ -101,15 +121,43 @@ export const Rect = def => {
 const rectTranRef = function(...args) {
     // this = rect
     const res = tranRef(...args);
-    this.renderTrans.add(res.transition);
+    this.transitions.add(res.transition);
     return res;
 };
 
 const rectTran = function(...args) {
     // this = rect
     const { transition, node: nd } = tranRef(...args);
-    this.renderTrans.add(transition);
+    this.transitions.add(transition);
     return nd;
+};
+
+const rectUnsafeTranRef = function(...args) {
+    // this = rect
+    const res = unsafeTranRef(...args);
+    this.transitions.add(res.transition);
+    return res;
+};
+
+const rectUnsafeTran = function(...args) {
+    // this = rect
+    const { transition, node: nd } = unsafeTranRef(...args);
+    this.transitions.add(transition);
+    return nd;
+};
+
+const rectListenRef = function(...args) {
+    // this = rect
+    const res = listenRef(...args);
+    this.listeners.add(res.listener);
+    return res;
+};
+
+const rectListen = function(...args) {
+    // this = rect
+    const { listener, chan: ch } = listenRef(...args);
+    this.listeners.add(listener);
+    return ch;
 };
 
 // Same as Rect, but with isAux = true
@@ -156,31 +204,47 @@ export const keyed = (key, val) => ({
     val: val
 });
 
-// A dummy rectangle covering the entire parent rectangle
-export const Dummy = changes =>
-    preserveR(
-        Supp({
-            layout: {
-                pos: [0, 0],
-                siz: [100, 100]
-            }
-        }),
-        changes || {}
-    );
+//// A dummy rectangle covering the entire parent rectangle
+//// export const Dummy = changes =>
+//     preserveR(
+//         Supp({
+//             layout: {
+//                 pos: [0, 0],
+//                 siz: [100, 100]
+//             }
+//         }),
+//         changes || {}
+//     );
 
 export const removeEvents = rect => {
     const elem = rect.inst.dom;
-    rect.domEvents.forEach(({ name, func }) => {
+    rect.domEvents.forEach(({ name }) => {
         elem['on' + name] = null;
         //elem.removeEventListener(name, func);
     });
 };
 
-export const addEvent = (rect, name, func) => {
-    const elem = rect.inst.dom;
+const addEvent = function(name, func) {
+    // this = rect
+    const elem = this.inst.dom;
     elem['on' + name] = func;
-    rect.domEvents.push({
+    this.domEvents.push({
         name,
         func
     });
+};
+
+const withInst = function(f) {
+    const rect = this;
+    listenOnce(rect.init, () => f(rect.inst));
+};
+
+const withDOM = function(f) {
+    const rect = this;
+    listenOnce(rect.init, () => f(rect.inst.dom));
+};
+
+const withPar = function(f) {
+    const rect = this;
+    listenOnce(rect.init, () => f(rect.inst.par));
 };

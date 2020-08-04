@@ -1,28 +1,18 @@
 import { node, tran, toNode } from '../node.js';
-import { iterate, vectorPlus, copyArray } from '../utils/index.js';
+import { iterate, vectorPlus } from '../utils/index.js';
 import { mapT } from '../tree.js';
-import { addEvent } from '../rect.js';
-import {
-    asPx,
-    mulCoord,
-    addCoord,
-    copyCoord,
-    copyLen,
-    splitCoord,
-    len
-} from '../coord.js';
+import { addCoord, copyCoord, splitCoord, len } from '../coord.js';
 
-const scrollSizeRef = {};
 const scrollRef = {};
 
 const nodes = {
-    fullSize: ({ elem, rect, tree, node: fs }) => {
+    fullSize: ({ rect, tree, node: fs }) => {
         rect.tran([tree.children], () => {
             const chs = tree.children.val;
             const limits = chs.map(tCh => {
-                const r = tCh.val;
+                const r = tCh.elem;
                 const lay = r.layout;
-                return tran([lay.posAbs, lay.sizAbs], () => {
+                return tran(lay.posAbs, lay.sizAbs, () => {
                     const limitAbs = vectorPlus(
                         lay.posAbs.val,
                         lay.sizAbs.val
@@ -31,11 +21,24 @@ const nodes = {
                         lay.pos.val,
                         lay.siz.val
                     );
+                    // if (
+                    //     (limitAbs[0].rel && limitAbs[0].rel > 100) ||
+                    //     limitAbs[0] > 100
+                    // ) {
+                    //     console.log(
+                    //         'yaa,',
+                    //         r.inst.dom,
+                    //         lay.posAbs.val,
+                    //         lay.pos.val,
+                    //         limitAbs,
+                    //         limitLen
+                    //     );
+                    // }
                     return [limitAbs, limitLen];
                 });
             });
             tran(limits, () => {
-                fs.val = copyCoord(
+                const ans = copyCoord(
                     limits
                         .map(l => l.val)
                         .reduce((l1, l2) => {
@@ -45,19 +48,53 @@ const nodes = {
                             const [xl1, yl1] = l1len;
                             const [x2, y2] = l2abs;
                             const [xl2, yl2] = l2len;
+                            // const lala = [
+                            //     x1 > x2
+                            //         ? [copyObj_(x1), copyObj_(xl1)]
+                            //         : [copyObj_(x2), copyObj_(xl2)],
+                            //     y1 > y2
+                            //         ? [copyObj_(y1), copyObj_(yl1)]
+                            //         : [copyObj_(y2), copyObj_(yl2)]
+                            // ];
                             return [
-                                x1 > x2 ? [x1, xl1] : [x2, xl2],
-                                y1 > y2 ? [y1, yl1] : [y2, yl2]
+                                [
+                                    x1 > x2 ? x1 : x2,
+                                    y1 > y2 ? y1 : y2
+                                ],
+                                [
+                                    x1 > x2 ? xl1 : xl2,
+                                    y1 > y2 ? yl1 : yl2
+                                ]
                             ];
+                            // console.log(
+                            //     'lla',
+                            //     l1abs,
+                            //     l2abs,
+                            //     l1len,
+                            //     l2len,
+                            //     [
+                            //         x1 > x2 ? x1 : x2,
+                            //         y1 > y2 ? y1 : y2
+                            //     ],
+                            //     [
+                            //         x1 > x2 ? xl1 : xl2,
+                            //         y1 > y2 ? yl1 : yl2
+                            //     ]
+                            //     // x1 > x2 ? [x1, xl1] : [x2, xl2],
+                            //     // y1 > y2 ? [y1, yl1] : [y2, yl2]
+                            // );
+                            //return lala;
                         })[1]
                 );
+                //console.log('ans', ans);
+                fs.val = ans;
             });
         });
         //rect.renderTrans.add(t);
     },
-    fullSizeCor: ({ elem, rect, tree, node: fsc }) => {
+    fullSizeCor: ({ rect, node: fsc }) => {
         const fs = node();
-        const res = nodes.fullSize({ elem, rect, tree, node: fs });
+        //const res = nodes.fullSize({ elem, rect, tree, node: fs });
         const siz = rect.layout.sizAbs;
         const sca = rect.layout.scale;
         const pSiz = rect.inst.par.layout.sizAbs;
@@ -72,7 +109,7 @@ const nodes = {
         });
     },
     scrollAbs: ({ elem, rect, node: scroll }) => {
-        addEvent(rect, 'scroll', () => {
+        rect.addEvent('scroll', () => {
             scroll.val = [elem.scrollLeft, elem.scrollTop];
         });
         rect.tran([scroll], () => {
@@ -81,6 +118,13 @@ const nodes = {
             elem.scrollTop = t;
         });
         //rect.renderTrans.add(t);
+    },
+    id: ({ elem, rect, node: idN }) => {
+        rect.unsafeTran(idN, id => {
+            if (id) {
+                elem.setAttribute('id', id);
+            }
+        });
     },
     scroll: ({ elem, rect, node: scroll }) => {
         const limN = rect.tran([rect.layout.sizAbs], siz => {
@@ -93,7 +137,7 @@ const nodes = {
                 h - sh >= 0 ? h - sh : 0
             ];
         });
-        addEvent(rect, 'scroll', () => {
+        rect.addEvent('scroll', () => {
             const lim = limN.val;
             scroll.val = [
                 lim[0] === 0 ? 0 : 100 * (elem.scrollLeft / lim[0]),

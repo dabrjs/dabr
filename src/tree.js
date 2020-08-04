@@ -5,29 +5,65 @@ import { node, tran, toNode } from './node.js';
 // nodes). You can define children as an array or only 1 element and
 // as a node or not a node but in the end it always becomes a node
 // with an array of trees inside.
-export const Tree = (val, children) => {
-    let ch;
-    if (children) {
-        if (children.isNode) {
-            if (isArray(children.val)) {
-                ch = children;
+// export const Tree2 = (elem, children) => {
+//     let ch;
+//     if (children) {
+//         if (children.isNode) {
+//             if (isArray(children.val)) {
+//                 ch = children;
+//             } else {
+//                 ch = tran(children, singleton);
+//             }
+//         } else {
+//             if (children.isEntry) {
+//                 ch = children;
+//             } else {
+//                 ch = toNode(singleton(children));
+//             }
+//         }
+//     } else {
+//         ch = node([]);
+//     }
+//     return {
+//         isTree: true,
+//         elem: elem,
+//         children: ch
+//     };
+// };
+
+export const Tree = (elem, ...childrens) => {
+    const childrensN = childrens.map(children => {
+        if (children) {
+            if (children.isNode) {
+                if (isArray(children.val)) {
+                    return children;
+                } else {
+                    return tran(children, singleton);
+                }
             } else {
-                ch = tran(children, singleton);
+                if (children.isEntry) {
+                    return children;
+                } else {
+                    return toNode(singleton(children));
+                }
             }
         } else {
-            if (children.isEntry) {
-                ch = children;
-            } else {
-                ch = toNode(singleton(children));
-            }
+            return node([]);
         }
-    } else {
-        ch = node([]);
-    }
+    });
     return {
         isTree: true,
-        val: val,
-        children: ch
+        elem: elem,
+        children:
+            childrensN.length == 0
+                ? node([])
+                : childrensN.length == 1
+                ? childrensN[0]
+                : tran(childrensN, () =>
+                      childrensN
+                          .map(ch => ch.val)
+                          .reduce((x, y) => x.concat(y))
+                  )
     };
 };
 
@@ -37,15 +73,14 @@ export const T = Tree;
 // (a -> b) -> Tree a -> Tree b
 export const mapT = (tree, f, path = []) =>
     Tree(
-        f(tree.val, tree, path),
+        f(tree.elem, tree, path),
         tree.children.isEntry
             ? tree.children
             : tran(tree.children, chs =>
                   chs.map((ch, i) => mapT(ch, f, path.concat(i)))
               )
     );
-export const _mapT = (f, path = []) => tree =>
-    mapT(tree, f, (path = []));
+export const _mapT = (f, path = []) => tree => mapT(tree, f, path);
 
 // Special object used to indicate entry-points to flatten Trees of
 // Trees of A into Trees of A (see 'flatten' function)
@@ -74,7 +109,7 @@ const substChildrenByEntry = (tree, ref) => {
             chs.map(ch => substChildrenByEntry(ch, ref))
         );
     }
-    return Tree(tree.val, children);
+    return Tree(tree.elem, children);
 };
 
 // (Tree a -> Tree b) -> Tree a -> Tree b
@@ -114,9 +149,9 @@ export const toStruc = tree => mapT(tree, x => Tree(x, Entry));
 // indicator of how to flatten the trees. Really useful for all sorts
 // of transformations.
 export const fromStruc = tree => {
-    const val = tree.val;
-    if (val.isTree) {
-        return fromStruc(substEntryByChildren(val, tree.children));
+    const elem = tree.elem;
+    if (elem.isTree) {
+        return fromStruc(substEntryByChildren(elem, tree.children));
     } else {
         tree.children = tran(tree.children, chs =>
             chs.map(fromStruc)

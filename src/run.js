@@ -1,10 +1,12 @@
-import { node, tran, removeTran } from './node.js';
-import { isNull, copyArray } from './utils/index.js';
+import { node, removeTran } from './node.js';
+import { removeListen } from './channel.js';
 import {
     addLayoutTriggers,
     defaultLayoutReactivity
 } from './layout.js';
-import { fromStruc } from './tree.js';
+import { fromStruc, mapT } from './tree.js';
+import { iterate } from './utils/index.js';
+import { toNode } from './node.js';
 import addStyle from './style/index.js';
 import addChans from './events/index.js';
 import addNodes from './nodes/index.js';
@@ -15,16 +17,30 @@ import { removeEvents } from './rect.js';
 // Initializes Rect: creates DOM, adds layout, nodes, chans and style
 // triggers. Runs inside 'document.body'.
 export const run = rectT =>
-    addStyle(addChans(addNodes(runRect(rectT))));
+    addCSS(addStyle(addChans(addNodes(runRect(rectT)))));
 
 // Similar to run but runs inside any DOM element
 export const runDOM = (rectT, dom) =>
-    addStyle(addChans(addNodes(runRectDOM(rectT, dom))));
+    addCSS(addStyle(addChans(addNodes(runRectDOM(rectT, dom)))));
 
 const getDeviceSize = () => [
     document.documentElement.clientWidth,
     document.documentElement.clientHeight
 ];
+
+const addCSS = tree =>
+    mapT(tree, r => {
+        if (r.css) {
+            iterate(r.css, ([attrName, attrVal]) => {
+                const attrNd = toNode(attrVal);
+                const dom = r.inst.dom;
+                r.tran(attrNd, v => {
+                    dom.style[attrName] = v;
+                });
+            });
+        }
+        return r;
+    });
 
 // Initialize Rect: creates DOM, adds only core layout triggers only.
 // If one wants to use Rect but not use default nodes, chans, style,
@@ -42,10 +58,20 @@ export const runRect = rectT => {
             dom: document.body
         }
     };
-    window.j = sizAbs;
-    window.onresize = () => {
-        sizAbs.val = getDeviceSize();
-    };
+    if (window.onresize) {
+        const f = window.onresize;
+        window.onresize = () => {
+            const devSize = f();
+            sizAbs.val = devSize;
+            return devSize;
+        };
+    } else {
+        window.onresize = () => {
+            const devSize = getDeviceSize();
+            sizAbs.val = devSize;
+            return devSize;
+        };
+    }
     // Flattens tree so that Trees of Trees of ... Trees of Rects
     // become just Trees of Rects
     return runInside(fromStruc(rectT), parent);
@@ -79,19 +105,19 @@ export const runRectDOM = (rectT, dom) => {
     return runInside(fromStruc(rectT), parent);
 };
 
-const findReference = parents => {
-    for (let i = parents.length - 1; i >= 0; i--) {
-        const parent = parents[i];
-        if (!parent.flex) {
-            return parent;
-        }
-    }
-    return undefined;
-};
+// const findReference = parents => {
+//     for (let i = parents.length - 1; i >= 0; i--) {
+//         const parent = parents[i];
+//         if (!parent.flex) {
+//             return parent;
+//         }
+//     }
+//     return undefined;
+// };
 
 // Main run function
 const runInside = (rectT, parent) => {
-    const rect = rectT.val;
+    const rect = rectT.elem;
 
     addGlobalCSSOnce();
     const elem = document.createElement('div');
@@ -146,20 +172,22 @@ const addChildrenTrigger = (children, parent) => {
         created.forEach(x => runInside(x, parent));
         removed.forEach(x => removeRect(x));
     });
-    //parent.renderTrans.add(t);
 };
 
 // Removes a rect, meaning its DOM is destroyed and events and node
 // transitions do not work anymore
 export const removeRect = rectT => {
-    const rect = rectT.val;
+    const rect = rectT.elem;
     const dom = rect.inst.dom;
     // GC removes eventListeners automatically when DOM is removed
     dom.parentNode.removeChild(dom);
     // Transitions related to DOM rendering are removed although GC
     // might be able to do it automatically
-    rect.renderTrans.forEach(tran => {
-        removeTran(tran);
+    rect.transitions.forEach(t => {
+        removeTran(t);
+    });
+    rect.listeners.forEach(l => {
+        removeListen(l);
     });
     removeEvents(rect);
     rect.inst = null;

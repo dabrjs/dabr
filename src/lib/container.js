@@ -1,12 +1,12 @@
-import { Tree, Entry } from '../tree.js';
-import { keyed, Dummy, preserveR } from '../rect.js';
+import { Tree } from '../tree.js';
+import { Supp, keyed, preserveR } from '../rect.js';
 
 export const container = (show, tree) =>
     Tree(
-        Dummy({
+        Supp({
             layout: {
-                pos: tree.val.layout.pos,
-                siz: tree.val.layout.siz
+                pos: tree.elem.layout.pos,
+                siz: tree.elem.layout.siz
             },
             data: keyed(container, show),
             style: {
@@ -14,7 +14,7 @@ export const container = (show, tree) =>
             }
         }),
         Tree(
-            preserveR(tree.val, {
+            preserveR(tree.elem, {
                 layout: {
                     pos: [0, 0],
                     siz: [100, 100]

@@ -1,11 +1,8 @@
 import {
     Rect,
     Tree,
-    linesC,
-    line,
     node,
     px,
-    paragraph,
     vertical,
     verticalSpace,
     proportional,
@@ -14,7 +11,6 @@ import {
     listenOnce,
     run,
     toNode,
-    Dummy,
     border,
     _border,
     mapT,
@@ -24,16 +20,30 @@ import {
     _container,
     _proportional,
     switcher,
-    text,
-    pathT
+    pathT,
+    chan,
+    listen,
+    Supp,
+    runDOM,
+    x,
+    style,
+    _style,
+    coord,
+    Text,
+    line,
+    paragraph,
+    fitText,
+    Img,
+    fitImg,
+    scrollbar
 } from '../dist/dabr.js';
 import { randomColor } from '../src/utils/index.js';
 
 const r = Tree(
     Rect({
         layout: {
-            pos: [30, 30],
-            siz: [40, 40]
+            pos: [0, 0],
+            siz: [30, 30]
         },
         style: {
             color: 'navy'
@@ -76,9 +86,9 @@ const r = Tree(
     ]
 );
 
-const f1 = _border(node({ color: 'red', width: 1 }));
+const f1 = _border(node({ color: 'red', width: 2 }));
 
-const f2 = _border(node({ color: 'green', width: 1 }));
+const f2 = _border(node({ color: 'green', width: 2 }));
 
 window.s = node(true);
 
@@ -98,23 +108,84 @@ const f4 = _proportional(node([1, 1]));
 
 const txt = node({ content: 'asdasdasd' });
 
-const k = Tree(
-    Rect({
-        layout: {
-            pos: [30, 30],
-            siz: [40, 40]
-        },
-        style: {
-            color: 'navy'
-        }
-    })
+window.heyy = node(
+    'https://i.pinimg.com/originals/f8/1e/ae/f81eae71d1e86be2ede0d49af2e4d61f.png'
 );
 
-const isSupp = t => (t.val ? t.val.isSupp : true);
+const k = siz =>
+    Tree(
+        Rect({
+            layout: {
+                pos: [0, 0],
+                siz
+            },
+            style: {
+                color: 'navy'
+            }
+        }),
+        vertical([
+            fitText(
+                node({ content: 'asadaasdaslalaalal' }),
+                Tree(
+                    Rect({
+                        layout: {
+                            pos: x(0),
+                            siz: [40, 20]
+                        },
+                        style: {
+                            color: randomColor()
+                        }
+                    })
+                )
+            ),
+            fitText(
+                node({ content: 'haha' }),
+                Tree(
+                    Rect({
+                        layout: {
+                            pos: x(0),
+                            siz: [40, 20]
+                        },
+                        style: {
+                            color: randomColor()
+                        }
+                    })
+                )
+            ),
+            fitText(
+                node({ content: 'F' }),
+                Tree(
+                    Rect({
+                        layout: {
+                            pos: x(0),
+                            siz: [40, 20]
+                        },
+                        style: {
+                            color: randomColor()
+                        }
+                    })
+                )
+            )
+        ])
+    );
+
+const isSupp = t => (t.elem ? t.elem.isSupp : true);
 const appCore = f => x => (isSupp(x) ? x : f(x));
 
+const click = chan();
+listen([click], () => {
+    console.log('click');
+});
+
+window.t = node({
+    content:
+        'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed vestibulum risus at ligula molestie aliquet. Morbi commodo tortor magna, vitae aliquam nisl vehicula non. Suspendisse ut egestas nisi. Vivamus sit amet interdum arcu. Sed ut ante ut ligula consequat pharetra auctor quis quam. Suspendisse a nisi lorem.asda asd asadasdaasdsd asd asd',
+    size: '8px'
+});
 window.va = node();
-window.c = node(2);
+window.c = node(6);
+window.n = coord([20, 10]);
+window.h = node({ content: 'asdioka asd adsa sd ad sd' });
 const k2 = Tree(
     Rect({
         layout: {
@@ -122,7 +193,7 @@ const k2 = Tree(
             siz: [40, 40]
         },
         style: {
-            color: 'navy'
+            color: 'red'
         }
     }),
     switcher(window.c, {
@@ -147,6 +218,7 @@ const k2 = Tree(
                     color: 'black'
                 }
             }),
+
             f4(
                 Tree(
                     Rect({
@@ -158,34 +230,220 @@ const k2 = Tree(
                         style: {
                             color: randomColor()
                         }
-                    }) //,
-                    //line(txt)(k)
+                    })
+                )
+            )
+        ),
+        3: scrollbar(
+            Tree(
+                Supp(),
+                Tree(
+                    Rect({
+                        layout: {
+                            pos: [0, 0],
+                            siz: [80, 1000]
+                        },
+                        style: {
+                            color: 'blue'
+                        },
+                        events: {
+                            drag: click
+                        }
+                    })
+                )
+            )
+        ),
+        4: Tree(
+            Supp(),
+            line([
+                Tree(
+                    Rect({
+                        layout: {
+                            siz: [20, 10]
+                        },
+                        style: {
+                            color: 'navy'
+                        },
+                        nodes: {
+                            id: '3'
+                        }
+                    })
+                ),
+                //Text(window.t),
+                Tree(
+                    Rect({
+                        layout: {
+                            siz: [20, 10]
+                        },
+                        style: {
+                            color: 'cyan'
+                        },
+                        nodes: {
+                            id: '2'
+                        }
+                    })
+                ),
+                r,
+                k([30, 30])
+            ])
+        ),
+        5: Tree(
+            Supp(),
+            paragraph([
+                Tree(
+                    Rect({
+                        layout: {
+                            siz: [20, 10]
+                        },
+                        style: {
+                            color: 'navy'
+                        },
+                        nodes: {
+                            id: '3'
+                        }
+                    })
+                ),
+                Tree(
+                    Rect({
+                        layout: {
+                            siz: [20, 10]
+                        },
+                        style: {
+                            color: 'cyan'
+                        },
+                        nodes: {
+                            id: '4'
+                        }
+                    })
+                ),
+                Tree(
+                    Rect({
+                        layout: {
+                            siz: [20, 10]
+                        },
+                        style: {
+                            color: 'black'
+                        },
+                        nodes: {
+                            id: 'asd'
+                        }
+                    })
+                ),
+                Text(window.t),
+                Tree(
+                    Rect({
+                        layout: {
+                            siz: [20, 10]
+                        },
+                        style: {
+                            color: 'cyan'
+                        }
+                    })
+                ),
+                Tree(
+                    Rect({
+                        layout: {
+                            siz: [10, 20]
+                        },
+                        style: {
+                            color: 'white'
+                        }
+                    })
+                ),
+                Tree(
+                    Rect({
+                        layout: {
+                            siz: [20, 10]
+                        },
+                        style: {
+                            color: 'orange'
+                        }
+                    })
+                )
+            ])
+        ),
+        6: Tree(
+            Supp(),
+            fitText(
+                window.h,
+                Tree(
+                    Rect({
+                        layout: {
+                            pos: [0, 0],
+                            siz: [100, 100]
+                        }
+                    })
                 )
             )
         )
     })
 );
 
+// run(
+//     Tree(
+//         Rect({
+//             layout: {
+//                 pos: [20, 20],
+//                 siz: [60, 60]
+//             }
+//         }),
+//         fitImg(window.heyy)
+//     )
+// );
+
 //run(k);
 //run(line(txt)(k));
 run(k2);
-//run(walkT(k2, x => (isSupp(x) ? x : f1(x))));
+//run(walkT(k2, appCore(f1)));
 //run(fromStruc(mapT(mapT(toStruc(r), f2), f3)));
 //run(fromStruc(mapT(mapT(toStruc(r), f4), f1)));
 //run(fromStruc(mapT(mapT(toStruc(r), f1), f4)));
 //run(walkT(line(txt)(k), x => appCore(y => f1(f2(y)))(x)));
-//run(walkT(k2, x => appCore(y => f2(f1(y)))(x)));
+// run(
+//     walkT(
+//         k2,
+//         appCore(y => f2(f1(y)))
+//     )
+// );
+// run(
+//     walkT(
+//         walkT(
+//             k2,
+//             appCore(y =>
+//                 style(
+//                     node({
+//                         'box-shadow':
+//                             'rgb(0, 210, 198) 20px 20px 50px, rgb(0, 255, 255) -30px -30px 60px'
+//                     }),
+//                     f2(f1(y))
+//                 )
+//             )
+//         ),
+//         _style(node({ 'border-radius': '50px' }))
+//     )
+// );
+// run(
+//     style(
+//         node({
+//             'box-shadow':
+//                 'black 20px 20px 50px, black -30px -30px 60px'
+//         }),
+//         walkT(
+//             walkT(k2, appCore(f1)),
+//             _style(node({ 'border-radius': '25px' }))
+//         )
+//     )
+// );
 // run(
 //     walkT(
 //         k2,
 //         (x, s) => {
 //             const newS = s
-//                 ? x.val.data.get(proportional) && s
+//                 ? x.elem.data.get(proportional)
 //                     ? false
 //                     : true
 //                 : s;
-//             console.log('S', s, newS);
-//             return [newS ? f2(f1(x)) : x, newS];
+//             return [newS ? appCore(y => f2(f1(y)))(x) : x, newS];
 //         },
 //         true
 //     )
@@ -209,3 +467,13 @@ run(k2);
 // });
 
 // window.o = obj(3);
+
+// window.onresize = () => {
+//     console.log('aaaaaaaa');
+// };
+
+// const f = window.onresize;
+// window.onresize = () => {
+//     f();
+//     console.log('oooooooooo');
+// };

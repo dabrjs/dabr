@@ -1,7 +1,6 @@
 import { node, tran } from '../node.js';
-import { listenOnce } from '../channel.js';
-import { Rect, Supp, preserveR, keyed, Dummy } from '../rect.js';
-import { Tree, Entry } from '../tree.js';
+import { Supp, preserveR, keyed } from '../rect.js';
+import { Tree } from '../tree.js';
 import { px } from '../coord.js';
 
 export const proportional = (prop, tree) => {
@@ -12,7 +11,7 @@ export const proportional = (prop, tree) => {
         outter: true,
         inner: false
     });
-    const rect = tree.val;
+    const rect = tree.elem;
     const sizAbs = node();
     const supp = Supp({
         layout: {

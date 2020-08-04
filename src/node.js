@@ -2,7 +2,9 @@ import {
     isEqual,
     isNotNull,
     isArray,
-    isFunction
+    isFunction,
+    copyObj,
+    copyArray
 } from './utils/index.js';
 
 // Node creation entry point
@@ -13,7 +15,8 @@ export const node = (val = null, info = new WeakMap()) =>
         trans: new Set(), // binded transitions
         changed: false, // set when node is already updated
         isNode: true, // to check if obj is a node
-        info: info // WeakMap with any info - better than strings!
+        info: info, // WeakMap with any info - better than strings!
+        change: change
     });
 
 const mkNode = target => new Proxy(target, { set, get });
@@ -75,21 +78,29 @@ const allNodesNotNull = nds =>
 //     }
 // };
 
+const change = function(f) {
+    const nd = this;
+    nd.val = f(nd.val);
+};
+
 export const tranRef = (...args) => {
     const len = args.length;
     //const triggerFunc = args[len - 1];
     const lastElem = args[len - 1];
     let triggerFunc;
     let ref;
+    let i;
     if (isFunction(lastElem)) {
         triggerFunc = lastElem;
         ref = null;
+        i = 1;
     } else {
         triggerFunc = args[len - 2];
         ref = lastElem;
+        i = 2;
     }
     const nodes = args
-        .splice(0, len - 1)
+        .splice(0, len - i)
         .map(x => (isArray(x) ? x : [x]))
         .reduce((x, y) => x.concat(y));
     if (nodes.length > 0) {
@@ -286,16 +297,59 @@ export const toNode = x => (x.isNode ? x : node(x));
 // a 1-way sub-node, that changes when the original node's attribute
 // changes. It is 1-way because changing the sub-node does not change
 // the parent node.
-export const subNode = (nd, attr) => mapN([nd], x => x[attr]);
+export const subNode1 = (nd, attr) => tran([nd], x => x[attr]);
 
 // Like 'subNode' but with 2-way changes. Changing the sub-node
 // changes the parent node as well
-export const subNode2 = (nd, attr) => {
-    const aux = tran(nd, x => x[attr]);
-    tran(aux, () => {
+export const subNode = (nd, attr) => {
+    const aux = unsafeTran(nd, x => (x ? x[attr] : null));
+    unsafeTran(aux, () => {
         const val = nd.val;
-        val[attr] = aux.val;
-        nd.val = val;
+        if (val && typeof val == 'object') {
+            const valC = isArray(val) ? copyArray(val) : copyObj(val);
+            valC[attr] = aux.val;
+            nd.val = valC;
+        } else if (aux.val) {
+            const initObj = {};
+            initObj[attr] = aux.val;
+            nd.val = initObj;
+        }
     });
     return aux;
 };
+
+export const addSubNode = (nd, attrArg) => {
+    let ndAttr;
+    let attr;
+    if (isArray(attrArg)) {
+        [ndAttr, attr] = attrArg;
+    } else {
+        ndAttr = attrArg;
+        attr = attrArg;
+    }
+    const subNd = subNode(nd, attr);
+    const target = nd.target;
+    target[ndAttr] = subNd;
+    return subNd;
+};
+
+// Create a node and subnodes according to atttributes: only works
+// correctly if the structure of the value does not change over time
+export const nodeObj = initVal => {
+    const nd = node(initVal);
+    if (typeof initVal == 'object') {
+        const attrs = new Set(Object.keys(initVal));
+        attrs.forEach(attr => {
+            addSubNode(nd, attr);
+        });
+    }
+    return nd;
+};
+
+//
+//if old is null
+//  make all the subnodes
+//else
+//  check if all the old subnodes exist in the new val
+//  if yes, do nothing
+//

@@ -1,4 +1,5 @@
 import { isNotNull, copyObj } from './utils/index.js';
+import { node, addSubNode } from './node.js';
 
 export const len = (rel, px) => ({
     rel,
@@ -30,6 +31,8 @@ export const getPx = l => (isNotNull(l.px) ? l.px : 0);
 
 export const getRel = l => (isNotNull(l.rel) ? l.rel : l);
 
+export const toLen = l => len(getRel(l), getPx(l));
+
 export const splitCoord = ([x, y]) => [
     [getRel(x), getRel(y)],
     [getPx(x), getPx(y)]
@@ -40,3 +43,16 @@ export const asPx = ([x, y]) => [px(x), px(y)];
 export const copyCoord = ([x, y]) => [copyLen(x), copyLen(y)];
 
 export const copyLen = l => (l.rel ? copyObj(l) : l);
+
+export const x = l => coord([l, 100]);
+
+export const y = l => coord([100, l]);
+
+export const coord = arg => {
+    const nd = arg.isNode ? arg : node(arg);
+    addSubNode(nd, '0');
+    addSubNode(nd, ['x', '0']);
+    addSubNode(nd, '1');
+    addSubNode(nd, ['y', '1']);
+    return nd;
+};

@@ -1,11 +1,10 @@
 import { node, tran } from '../node.js';
-import { listenOnce } from '../channel.js';
 import { Supp, preserveR, keyed } from '../rect.js';
 import { px, len } from '../coord.js';
-import { Tree, Entry } from '../tree.js';
+import { Tree } from '../tree.js';
 
 export const border = (b, tree) => {
-    const rect = tree.val;
+    const rect = tree.elem;
     const innerPos = node();
     const innerSiz = node();
     const color = tran(b, ({ color }) => color);

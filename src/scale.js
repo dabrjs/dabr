@@ -1,4 +1,4 @@
-import { node, tran } from './node.js';
+import { tran } from './node.js';
 import { listenOnce } from './channel.js';
 
 export const setParentScale = rect => {

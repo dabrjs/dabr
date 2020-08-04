@@ -20,6 +20,8 @@
     },
     "rules": {
         "no-prototype-builtins": 0,
-        "one-var": [2, "never"]
+        "one-var": [2, "never"],
+        "no-console": 1,
+        "no-global-assign": 1
     }
 }

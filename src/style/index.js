@@ -12,7 +12,12 @@ const styleAttrs = {
         } else {
             elem.style['display'] = 'none';
         }
-    }
+    } // ,
+    // css: ({ elem, node: obj }) => () => {
+    //     Object.entries(obj.val).forEach(([attr, val]) => {
+    //         elem.style[attr] = val;
+    //     });
+    // }
 };
 
 // Binds CSS properties to nodes
@@ -28,8 +33,7 @@ export default tree =>
                         elem: r.inst.dom,
                         rect: r
                     });
-                    r.tran([nd], tr);
-                    //r.renderTrans.add(t);
+                    r.tran(nd, tr);
                 }
             });
         }

@@ -1,8 +1,7 @@
 import { mapValuesObj, isNotNull, iterate } from '../utils/index.js';
 import { node, tran } from '../node.js';
-import { Rect, Dummy, Supp } from '../rect.js';
+import { Supp } from '../rect.js';
 import { Tree } from '../tree.js';
-import { top } from '../rect-tree.js';
 import { container } from './container.js';
 
 export const switcher = (route, routeRectMap) => {
