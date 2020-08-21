@@ -104,34 +104,6 @@ const listen = (...args) => {
     return chan;
 };
 
-// Adds a listener to each channel
-// export const listen = (chans, func) => {
-//     const listener = { chans, func };
-//     chans.forEach(chan => {
-//         chan.ports.add(listener);
-//     });
-//     return listener;
-// };
-
-// Same thing as listen but every listener has a ref attribute in a
-// way that only 1 listener with the same 'ref' object can be inside
-// a channel. When listenRef is used in node with a transition with
-// the same ref, the old transition is replaced by the new one.
-// export const listenRef = (ref, chans, func) => {
-//     const listener = { chans, func, ref };
-//     chans.forEach(chan => {
-//         const ps = chan.ports;
-//         const res = [...ps].find(l => l.ref == ref);
-//         if (res) {
-//             removeListen(res);
-//             ps.add(listener);
-//         } else {
-//             ps.add(listener);
-//         }
-//     });
-//     return listener;
-// };
-
 // Listener removal
 const removeListen = listener => {
     listener.chans.forEach(chan => {
@@ -140,14 +112,6 @@ const removeListen = listener => {
     });
 };
 
-//// After first listen, listener is removed
-// export const listenOnce = (chans, func) => {
-//     const listener = listen(chans, () => {
-//         func();
-//         removeListen(listener);
-//     });
-//     return listener;
-// };
 const listenOnce = (...args) => {
     const len = args.length;
     const lastElem = args[len - 1];

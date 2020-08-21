@@ -20,7 +20,8 @@ export const flex = tree => {
             css: {
                 height: 'max-content',
                 width: 'max-content',
-                'font-size': '0px'
+                'font-size': '0px',
+                position: 'relative'
             }
         })
     );
@@ -62,7 +63,8 @@ export const flexX = tree => {
             },
             css: {
                 width: 'max-content',
-                'font-size': '0px'
+                'font-size': '0px',
+                position: 'relative'
             }
         })
     );
@@ -105,7 +107,8 @@ export const flexY = tree => {
             },
             css: {
                 height: 'max-content',
-                'font-size': '0px'
+                'font-size': '0px',
+                position: 'relative'
             }
         })
     );

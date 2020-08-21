@@ -589,7 +589,6 @@ const walkT = (tree, f, state = null, path = []) => {
     const resWithEntry = res
         ? substChildrenByEntry(res, tree.children)
         : null;
-    //console.log('ok', resWithEntry, resWithEntry.val.layout.sizAbs);
     const resChildren = tran(tree.children, chs =>
         chs.map((ch, i) => walkT(ch, f, newState, path.concat(i)))
     );
@@ -638,12 +637,7 @@ const styleAttrs = {
         } else {
             elem.style['display'] = 'none';
         }
-    } // ,
-    // css: ({ elem, node: obj }) => () => {
-    //     Object.entries(obj.val).forEach(([attr, val]) => {
-    //         elem.style[attr] = val;
-    //     });
-    // }
+    }
 };
 
 // Binds CSS properties to nodes
@@ -714,30 +708,11 @@ const events = {
                 channel.put = e;
             }
         });
-        // let clicking = false;
-        // elem.addEventListener('mousedown', e => {
-        //     console.log('aAAAAAA');
-        //     clicking = true;
-        //     channel.put = e;
-        // });
-        // elem.addEventListener('mouseup', () => {
-        //     console.log('BBBBBBBBB');
-        //     clicking = false;
-        //     channel.put = false;
-        // });
-        // elem.addEventListener('mousemove', e => {
-        //     if (clicking) {
-        //         channel.put = e;
-        //     }
-        // });
     },
     mouseOut: ({ rect, channel }) => {
         rect.addEvent('mouseout', e => {
             channel.put = e;
         });
-        // elem.addEventListener('mouseout', e => {
-        //     channel.put = e;
-        // });
     }
 };
 
@@ -1098,34 +1073,6 @@ const listen = (...args) => {
     return chan;
 };
 
-// Adds a listener to each channel
-// export const listen = (chans, func) => {
-//     const listener = { chans, func };
-//     chans.forEach(chan => {
-//         chan.ports.add(listener);
-//     });
-//     return listener;
-// };
-
-// Same thing as listen but every listener has a ref attribute in a
-// way that only 1 listener with the same 'ref' object can be inside
-// a channel. When listenRef is used in node with a transition with
-// the same ref, the old transition is replaced by the new one.
-// export const listenRef = (ref, chans, func) => {
-//     const listener = { chans, func, ref };
-//     chans.forEach(chan => {
-//         const ps = chan.ports;
-//         const res = [...ps].find(l => l.ref == ref);
-//         if (res) {
-//             removeListen(res);
-//             ps.add(listener);
-//         } else {
-//             ps.add(listener);
-//         }
-//     });
-//     return listener;
-// };
-
 // Listener removal
 const removeListen = listener => {
     listener.chans.forEach(chan => {
@@ -1134,14 +1081,6 @@ const removeListen = listener => {
     });
 };
 
-//// After first listen, listener is removed
-// export const listenOnce = (chans, func) => {
-//     const listener = listen(chans, () => {
-//         func();
-//         removeListen(listener);
-//     });
-//     return listener;
-// };
 const listenOnce = (...args) => {
     const len = args.length;
     const lastElem = args[len - 1];
@@ -1364,18 +1303,6 @@ const keyed = (key, val) => ({
     key: key,
     val: val
 });
-
-//// A dummy rectangle covering the entire parent rectangle
-//// export const Dummy = changes =>
-//     preserveR(
-//         Supp({
-//             layout: {
-//                 pos: [0, 0],
-//                 siz: [100, 100]
-//             }
-//         }),
-//         changes || {}
-//     );
 
 const removeEvents = rect => {
     const elem = rect.inst.dom;
@@ -2901,15 +2828,6 @@ const External = (children, parent = Rect()) => {
         if (child.elem.inst) {
             const dom = child.elem.inst.dom;
             const { top, left } = dom.getBoundingClientRect();
-            console.log(
-                'inside',
-                dom,
-                top,
-                left,
-                dom.getBoundingClientRect(),
-                positions.get(dom).val,
-                positions.get(dom)
-            );
             positions.get(dom).val = asPx([left, top]);
         }
     };
@@ -2934,13 +2852,6 @@ const External = (children, parent = Rect()) => {
         transaction(sizNodes, () => {
             entries.forEach(entry => {
                 const { width, height } = entry.contentRect;
-                console.log(
-                    'resizz',
-                    entry,
-                    width,
-                    height,
-                    entry.contentRect
-                );
                 if (width != 0 && height != 0) {
                     sizes.get(entry.target).val = asPx([
                         width,
@@ -2958,9 +2869,6 @@ const External = (children, parent = Rect()) => {
             layout: {
                 disablePos: true,
                 disableSiz: true
-            },
-            css: {
-                //position: 'unset'
             }
         });
 
@@ -3823,7 +3731,6 @@ const vertical = trees => {
                 css: {
                     display: 'block',
                     position: 'relative'
-                    //'vertical-align': 'middle'
                 }
             }),
             t.children
