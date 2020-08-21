@@ -30,8 +30,8 @@ export const Inline = (tag, params, rect = Rect()) => {
         css: {
             position: 'relative',
             display: 'inline',
-            width: 'max-content',
-            height: 'max-content',
+            width: 'auto', //'max-content',
+            height: 'auto', //'max-content',
             'font-size': size
         }
     });

@@ -45,7 +45,7 @@ export const Text = args => {
         'div',
         { content, size: fontSize },
         Supp({
-            text: textObj,
+            isText: true,
             data: keyed(Text, textObj),
             layout: {
                 disablePos: true,
