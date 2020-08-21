@@ -221,14 +221,14 @@ export const subNode1 = (nd, attr) => tran([nd], x => x[attr]);
 // Like 'subNode' but with 2-way changes. Changing the sub-node
 // changes the parent node as well
 export const subNode = (nd, attr) => {
-    const aux = unsafeTran(nd, x => (x ? x[attr] : null));
+    const aux = unsafeTran(nd, x => (isNotNull(x) ? x[attr] : null));
     unsafeTran(aux, () => {
         const val = nd.val;
         if (val && typeof val == 'object') {
             const valC = isArray(val) ? copyArray(val) : copyObj(val);
             valC[attr] = aux.val;
             nd.val = valC;
-        } else if (aux.val) {
+        } else if (isNotNull(aux.val)) {
             const initObj = {};
             initObj[attr] = aux.val;
             nd.val = initObj;

@@ -1398,7 +1398,7 @@ const addLayoutTriggers = (layout, elem, rect, parLayout) => {
                 } else {
                     elem.style.left = `calc(${pc[0]}% + ${pPx[0]}px)`;
                 }
-                if (pc[0] == 0) {
+                if (pc[1] == 0) {
                     elem.style.top = `${pPx[1]}px`;
                 } else {
                     elem.style.top = `calc(${pc[1]}% + ${pPx[1]}px)`;
