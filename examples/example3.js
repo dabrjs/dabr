@@ -7,7 +7,6 @@ import {
     verticalSpace,
     proportional,
     tran,
-    flexY,
     listenOnce,
     run,
     toNode,
@@ -35,7 +34,19 @@ import {
     fitText,
     Img,
     fitImg,
-    scrollbar
+    scrollbar,
+    External,
+    preserveR,
+    flex,
+    flexY,
+    flexX,
+    len,
+    horizontal,
+    transaction,
+    startTransaction,
+    endTransaction,
+    withTree,
+    Inline
 } from '../dist/dabr.js';
 import { randomColor } from '../src/utils/index.js';
 
@@ -393,7 +404,7 @@ const k2 = Tree(
 
 //run(k);
 //run(line(txt)(k));
-run(k2);
+//run(k2);
 //run(walkT(k2, appCore(f1)));
 //run(fromStruc(mapT(mapT(toStruc(r), f2), f3)));
 //run(fromStruc(mapT(mapT(toStruc(r), f4), f1)));
@@ -477,3 +488,182 @@ run(k2);
 //     f();
 //     console.log('oooooooooo');
 // };
+
+const A = () =>
+    paragraph([
+        Text('Exmçsdçsçd'),
+        Text('çsdkçsd'),
+        Text('çsdkçsd'),
+        Text('çsdkçsd')
+    ]);
+
+const B = () =>
+    line([
+        Text('Exmçsdçsçd'),
+        Text('çsdkçsd'),
+        Text('çsdkçsd'),
+        Text('çsdkçsd')
+    ]);
+
+const page = () =>
+    Tree(
+        S(),
+        vertical([
+            A(),
+            B(),
+            A(),
+            B(),
+            A(),
+            B(),
+            A(),
+            B(),
+            A(),
+            B(),
+            A(),
+            B(),
+            A(),
+            B(),
+            A(),
+            B()
+        ])
+    );
+
+const pages = () => {
+    const obj = {};
+    for (let i = 0; i <= 2; i++) {
+        obj[i] = page();
+    }
+    return obj;
+};
+
+window.ro = node(0);
+
+const S = () =>
+    Supp({
+        style: {
+            color: randomColor()
+        }
+    });
+
+const k3 = Tree(S(), switcher(window.ro, pages()));
+//const k3 = Tree(S, page());
+
+//run(k3);
+
+const j1 = () =>
+    Tree(
+        Rect({
+            layout: {
+                siz: [5, 5]
+            },
+            style: {
+                color: 'blue'
+            }
+        })
+    );
+
+const j2 = () =>
+    Tree(
+        Rect({
+            layout: {
+                siz: [5, 10]
+            },
+            style: {
+                color: 'orange'
+            }
+        })
+    );
+
+const t1 = () =>
+    Text({ content: 'sdlpsdp\n sfpo ifosf', size: '20px' });
+
+const t3 = () => Inline('pre', 'hel\nlo');
+
+window.j1 = j1();
+window.j2 = j2();
+
+const gh = () =>
+    withTree(
+        paragraph(
+            [
+                j1(),
+                t1(),
+                j2(),
+                t3(),
+                j1(),
+                t1(),
+                t1(),
+                t3(),
+                j2(),
+                t1(),
+                j1(),
+                t3(),
+                j2(),
+                t1(),
+                window.j1,
+                j2(),
+                t1(),
+                window.j2
+            ],
+            Rect({
+                css: {
+                    'text-align': 'center'
+                }
+            })
+        ),
+        r =>
+            preserveR(r, {
+                style: {
+                    color: randomColor()
+                }
+            })
+    );
+
+const ggh = () =>
+    Tree(
+        Rect({
+            layout: {
+                pos: [25, 0],
+                siz: [50, 100]
+            }
+        }),
+        vertical([gh(), gh(), gh(), gh(), gh()])
+    );
+
+window.gh = gh;
+//window.th = node('Heyyyyy');
+//const hg = fitText2(window.th, Tree(Rect()));
+
+run(ggh());
+
+const b1 = node();
+const b2 = node();
+const b3 = node();
+const br = tran(b1, b2, b3, (m1, m2, m3) => m1 + m2 + m3);
+
+tran(br, m => {
+    console.log('New val!!!', m);
+});
+
+tran(b1, m => {
+    console.log('b1!!!', m);
+});
+
+tran(b2, m => {
+    console.log('b2!!!', m);
+});
+
+tran(b3, m => {
+    console.log('b3!!!', m);
+});
+
+b1.val = 1;
+b2.val = 2;
+b3.val = 3;
+
+transaction(b1, b2, () => {
+    b3.val = 1000;
+    console.log('hmmmm', b3.val);
+    b1.val = 44;
+    b2.val = 100;
+});

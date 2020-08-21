@@ -12,12 +12,7 @@ const styleAttrs = {
         } else {
             elem.style['display'] = 'none';
         }
-    } // ,
-    // css: ({ elem, node: obj }) => () => {
-    //     Object.entries(obj.val).forEach(([attr, val]) => {
-    //         elem.style[attr] = val;
-    //     });
-    // }
+    }
 };
 
 // Binds CSS properties to nodes

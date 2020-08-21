@@ -121,7 +121,6 @@ export const walkT = (tree, f, state = null, path = []) => {
     const resWithEntry = res
         ? substChildrenByEntry(res, tree.children)
         : null;
-    //console.log('ok', resWithEntry, resWithEntry.val.layout.sizAbs);
     const resChildren = tran(tree.children, chs =>
         chs.map((ch, i) => walkT(ch, f, newState, path.concat(i)))
     );

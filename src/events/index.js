@@ -49,30 +49,11 @@ const events = {
                 channel.put = e;
             }
         });
-        // let clicking = false;
-        // elem.addEventListener('mousedown', e => {
-        //     console.log('aAAAAAA');
-        //     clicking = true;
-        //     channel.put = e;
-        // });
-        // elem.addEventListener('mouseup', () => {
-        //     console.log('BBBBBBBBB');
-        //     clicking = false;
-        //     channel.put = false;
-        // });
-        // elem.addEventListener('mousemove', e => {
-        //     if (clicking) {
-        //         channel.put = e;
-        //     }
-        // });
     },
     mouseOut: ({ rect, channel }) => {
         rect.addEvent('mouseout', e => {
             channel.put = e;
         });
-        // elem.addEventListener('mouseout', e => {
-        //     channel.put = e;
-        // });
     }
 };
 

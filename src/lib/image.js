@@ -45,7 +45,6 @@ export const Img = src => {
     return Tree(r);
 };
 
-//
 export const fitImg = src => {
     const imgT = Img(src);
     const [{ siz: imgSiz }] = imgT.elem.data.get(Img);

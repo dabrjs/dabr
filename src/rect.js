@@ -62,10 +62,13 @@ export const Rect = (def = {}) => {
         posChanged: chan(),
         sizChanged: chan(),
         posAbsChanged: chan(),
-        sizAbsChanged: chan()
+        sizAbsChanged: chan(),
+        enablePosAbs: node(false),
+        enableSizAbs: node(false)
     };
 
     const defaultRectAttrs = {
+        tag: 'div',
         isRect: true,
         isSupp: false,
         isCore: true,
@@ -203,18 +206,6 @@ export const keyed = (key, val) => ({
     key: key,
     val: val
 });
-
-//// A dummy rectangle covering the entire parent rectangle
-//// export const Dummy = changes =>
-//     preserveR(
-//         Supp({
-//             layout: {
-//                 pos: [0, 0],
-//                 siz: [100, 100]
-//             }
-//         }),
-//         changes || {}
-//     );
 
 export const removeEvents = rect => {
     const elem = rect.inst.dom;

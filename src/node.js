@@ -16,7 +16,10 @@ export const node = (val = null, info = new WeakMap()) =>
         changed: false, // set when node is already updated
         isNode: true, // to check if obj is a node
         info: info, // WeakMap with any info - better than strings!
-        change: change
+        change: change,
+        inTransaction: false,
+        delayedTransitions: null,
+        delayedChanges: null
     });
 
 const mkNode = target => new Proxy(target, { set, get });
@@ -30,21 +33,29 @@ const set = (target, prop, value) => {
         // Node networks care about value equality. Different from
         // channels, if the value is the same nothing happens.
         if (!target.changed && !isEqual(target.val, value)) {
-            target.old = target.val;
-            target.val = value;
-            // Property 'changed' being set to true before running
-            // transitions prevents infinite loops. Node nets are
-            // assumed to stabilize values in 1 run always so there
-            // is no reason to run the same transition twice.
-            target.changed = true;
-            target.trans.forEach(t => {
-                // if transition returns truish value, it means the
-                // transition should be deleted
-                if (t.func()) {
-                    target.trans.delete(t); // = target.trans.filter(tr => tr != t);
-                }
-            });
-            target.changed = false;
+            if (!target.inTransaction) {
+                target.old = target.val;
+                target.val = value;
+                // Property 'changed' being set to true before running
+                // transitions prevents infinite loops. Node nets are
+                // assumed to stabilize values in 1 run always so there
+                // is no reason to run the same transition twice.
+                target.changed = true;
+                target.trans.forEach(t => {
+                    t.func();
+                });
+                target.changed = false;
+            } else {
+                const delayedTransitions = target.delayedTransitions;
+                const delayedChanges = target.delayedChanges;
+                delayedChanges.add({
+                    target,
+                    value
+                });
+                target.trans.forEach(t => {
+                    delayedTransitions.add(t);
+                });
+            }
         }
         return true;
     }
@@ -54,30 +65,6 @@ const set = (target, prop, value) => {
 const allNodesNotNull = nds =>
     nds.map(x => isNotNull(x.val)).reduce((x, y) => x && y, true);
 
-// Binds a transition to many nodes.
-// It runs whenever any one of the binded nodes change.
-// export const tran = (nodes, func) => {
-//     if (nodes.length > 0) {
-//         const transition = { nodes, func };
-//         // Many transitions with the same tag is not allowed. Tags are
-//         // used as an indentity for dynamically created transitions.
-//         nodes.forEach(nd => {
-//             const ts = nd.target.trans;
-//             if (!ts.has(transition)) {
-//                 ts.add(transition);
-//             }
-//         });
-//         // The transition runs right away if nodes are initialized with
-//         // non null values.
-//         if (allNodesNotNull(nodes)) {
-//             func();
-//         }
-//         return transition;
-//     } else {
-//         return null;
-//     }
-// };
-
 const change = function(f) {
     const nd = this;
     nd.val = f(nd.val);
@@ -85,7 +72,6 @@ const change = function(f) {
 
 export const tranRef = (...args) => {
     const len = args.length;
-    //const triggerFunc = args[len - 1];
     const lastElem = args[len - 1];
     let triggerFunc;
     let ref;
@@ -156,7 +142,6 @@ export const tran = (...args) => {
 
 export const unsafeTranRef = (...args) => {
     const len = args.length;
-    //const triggerFunc = args[len - 1];
     const lastElem = args[len - 1];
     let triggerFunc;
     let ref;
@@ -216,48 +201,6 @@ export const unsafeTran = (...args) => {
     return node;
 };
 
-// // Same thing as tran but every transition has a ref attribute in a
-// // way thaat only 1 transition with the same 'ref' object can be
-// // inside a node. When tranRef is used in  node with a transition with
-// // the same ref, the old transition is replaced by the new one. This
-// // is useful sometimes
-// export const tranRef = (ref, nodes, func) => {
-//     if (nodes.length > 0) {
-//         const transition = { nodes, func, ref };
-//         // Many transitions with the same tag is not allowed. Tags are
-//         // used as an indentity for dynamically created transitions.
-//         nodes.forEach(nd => {
-//             const targ = nd.target;
-//             const ts = targ.trans;
-//             if (!ts.has(transition)) {
-//                 const res = [...ts].find(t => t.ref == ref);
-//                 if (res) {
-//                     removeTran(res);
-//                     ts.add(transition);
-//                 } else {
-//                     ts.add(transition);
-//                 }
-//             }
-//         });
-//         // The transition runs right away if nodes are initialized with
-//         // non null values.
-//         if (allNodesNotNull(nodes)) {
-//             func();
-//         }
-//         return transition;
-//     } else {
-//         return null;
-//     }
-// };
-
-// Only runs if all binded nodes are not null
-// export const safeTran = (nodes, func) =>
-//     tran(nodes, () => {
-//         if (allNodesNotNull(nodes)) {
-//             func();
-//         }
-//     });
-
 // Remove a transition from all binded nodes
 export const removeTran = transition => {
     transition.nodes.forEach(nd => {
@@ -268,30 +211,6 @@ export const removeTran = transition => {
 
 // Used when you want to make sure an obj is a node
 export const toNode = x => (x.isNode ? x : node(x));
-
-// Create a node from a transition
-// export const nodeT = (nodes, func, info) => {
-//     const aux = node(null, info);
-//     tran(nodes, () => {
-//         aux.val = func();
-//     });
-//     return aux;
-// };
-
-// export const safeNodeT = (nodes, func, info) => {
-//     const aux = node(null, info);
-//     safeTran(nodes, () => {
-//         aux.val = func();
-//     });
-//     return aux;
-// };
-
-// Similar to nodeT but the function receives values as input
-// export const mapN = (ns, f, info) =>
-//     nodeT(ns, () => f(...ns.map(n => n.val)), info);
-
-// export const safeMapN = (ns, f, info) =>
-//     safeNodeT(ns, () => f(...ns.map(n => n.val)), info);
 
 // If a node carries object information, the subNode function creates
 // a 1-way sub-node, that changes when the original node's attribute
@@ -346,10 +265,53 @@ export const nodeObj = initVal => {
     return nd;
 };
 
-//
-//if old is null
-//  make all the subnodes
-//else
-//  check if all the old subnodes exist in the new val
-//  if yes, do nothing
-//
+export const transaction = (...args) => {
+    const len = args.length;
+    const func = args[len - 1];
+    const nodes = args
+        .splice(0, len - 1)
+        .map(x => (isArray(x) ? x : [x]))
+        .reduce((x, y) => x.concat(y));
+
+    const transactionReference = startTransaction(...nodes);
+    func();
+    endTransaction(transactionReference);
+};
+
+export const startTransaction = (...nodes) => {
+    const delayedTransitions = new Set();
+    const delayedChanges = new Set();
+    nodes.forEach(nd => {
+        nd.target.inTransaction = true;
+        nd.target.delayedTransitions = delayedTransitions;
+        nd.target.delayedChanges = delayedChanges;
+    });
+    const transactionReference = {
+        nodes,
+        delayedTransitions,
+        delayedChanges
+    };
+    return transactionReference;
+};
+
+export const endTransaction = transactionReference => {
+    const {
+        nodes,
+        delayedTransitions,
+        delayedChanges
+    } = transactionReference;
+    delayedChanges.forEach(({ target, value }) => {
+        target.old = target.val;
+        target.val = value;
+        target.changed = true;
+    });
+    delayedTransitions.forEach(tr => {
+        tr.func();
+    });
+    nodes.forEach(nd => {
+        nd.target.inTransaction = false;
+        nd.target.changed = false;
+        nd.target.delayedTransitions = null;
+        nd.target.delayedChanges = null;
+    });
+};

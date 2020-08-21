@@ -150,7 +150,10 @@ const node = (val = null, info = new WeakMap()) =>
         changed: false, // set when node is already updated
         isNode: true, // to check if obj is a node
         info: info, // WeakMap with any info - better than strings!
-        change: change
+        change: change,
+        inTransaction: false,
+        delayedTransitions: null,
+        delayedChanges: null
     });
 
 const mkNode = target => new Proxy(target, { set, get });
@@ -164,21 +167,29 @@ const set = (target, prop, value) => {
         // Node networks care about value equality. Different from
         // channels, if the value is the same nothing happens.
         if (!target.changed && !isEqual(target.val, value)) {
-            target.old = target.val;
-            target.val = value;
-            // Property 'changed' being set to true before running
-            // transitions prevents infinite loops. Node nets are
-            // assumed to stabilize values in 1 run always so there
-            // is no reason to run the same transition twice.
-            target.changed = true;
-            target.trans.forEach(t => {
-                // if transition returns truish value, it means the
-                // transition should be deleted
-                if (t.func()) {
-                    target.trans.delete(t); // = target.trans.filter(tr => tr != t);
-                }
-            });
-            target.changed = false;
+            if (!target.inTransaction) {
+                target.old = target.val;
+                target.val = value;
+                // Property 'changed' being set to true before running
+                // transitions prevents infinite loops. Node nets are
+                // assumed to stabilize values in 1 run always so there
+                // is no reason to run the same transition twice.
+                target.changed = true;
+                target.trans.forEach(t => {
+                    t.func();
+                });
+                target.changed = false;
+            } else {
+                const delayedTransitions = target.delayedTransitions;
+                const delayedChanges = target.delayedChanges;
+                delayedChanges.add({
+                    target,
+                    value
+                });
+                target.trans.forEach(t => {
+                    delayedTransitions.add(t);
+                });
+            }
         }
         return true;
     }
@@ -188,30 +199,6 @@ const set = (target, prop, value) => {
 const allNodesNotNull = nds =>
     nds.map(x => isNotNull(x.val)).reduce((x, y) => x && y, true);
 
-// Binds a transition to many nodes.
-// It runs whenever any one of the binded nodes change.
-// export const tran = (nodes, func) => {
-//     if (nodes.length > 0) {
-//         const transition = { nodes, func };
-//         // Many transitions with the same tag is not allowed. Tags are
-//         // used as an indentity for dynamically created transitions.
-//         nodes.forEach(nd => {
-//             const ts = nd.target.trans;
-//             if (!ts.has(transition)) {
-//                 ts.add(transition);
-//             }
-//         });
-//         // The transition runs right away if nodes are initialized with
-//         // non null values.
-//         if (allNodesNotNull(nodes)) {
-//             func();
-//         }
-//         return transition;
-//     } else {
-//         return null;
-//     }
-// };
-
 const change = function(f) {
     const nd = this;
     nd.val = f(nd.val);
@@ -219,7 +206,6 @@ const change = function(f) {
 
 const tranRef = (...args) => {
     const len = args.length;
-    //const triggerFunc = args[len - 1];
     const lastElem = args[len - 1];
     let triggerFunc;
     let ref;
@@ -290,7 +276,6 @@ const tran = (...args) => {
 
 const unsafeTranRef = (...args) => {
     const len = args.length;
-    //const triggerFunc = args[len - 1];
     const lastElem = args[len - 1];
     let triggerFunc;
     let ref;
@@ -350,48 +335,6 @@ const unsafeTran = (...args) => {
     return node;
 };
 
-// // Same thing as tran but every transition has a ref attribute in a
-// // way thaat only 1 transition with the same 'ref' object can be
-// // inside a node. When tranRef is used in  node with a transition with
-// // the same ref, the old transition is replaced by the new one. This
-// // is useful sometimes
-// export const tranRef = (ref, nodes, func) => {
-//     if (nodes.length > 0) {
-//         const transition = { nodes, func, ref };
-//         // Many transitions with the same tag is not allowed. Tags are
-//         // used as an indentity for dynamically created transitions.
-//         nodes.forEach(nd => {
-//             const targ = nd.target;
-//             const ts = targ.trans;
-//             if (!ts.has(transition)) {
-//                 const res = [...ts].find(t => t.ref == ref);
-//                 if (res) {
-//                     removeTran(res);
-//                     ts.add(transition);
-//                 } else {
-//                     ts.add(transition);
-//                 }
-//             }
-//         });
-//         // The transition runs right away if nodes are initialized with
-//         // non null values.
-//         if (allNodesNotNull(nodes)) {
-//             func();
-//         }
-//         return transition;
-//     } else {
-//         return null;
-//     }
-// };
-
-// Only runs if all binded nodes are not null
-// export const safeTran = (nodes, func) =>
-//     tran(nodes, () => {
-//         if (allNodesNotNull(nodes)) {
-//             func();
-//         }
-//     });
-
 // Remove a transition from all binded nodes
 const removeTran = transition => {
     transition.nodes.forEach(nd => {
@@ -402,30 +345,6 @@ const removeTran = transition => {
 
 // Used when you want to make sure an obj is a node
 const toNode = x => (x.isNode ? x : node(x));
-
-// Create a node from a transition
-// export const nodeT = (nodes, func, info) => {
-//     const aux = node(null, info);
-//     tran(nodes, () => {
-//         aux.val = func();
-//     });
-//     return aux;
-// };
-
-// export const safeNodeT = (nodes, func, info) => {
-//     const aux = node(null, info);
-//     safeTran(nodes, () => {
-//         aux.val = func();
-//     });
-//     return aux;
-// };
-
-// Similar to nodeT but the function receives values as input
-// export const mapN = (ns, f, info) =>
-//     nodeT(ns, () => f(...ns.map(n => n.val)), info);
-
-// export const safeMapN = (ns, f, info) =>
-//     safeNodeT(ns, () => f(...ns.map(n => n.val)), info);
 
 // If a node carries object information, the subNode function creates
 // a 1-way sub-node, that changes when the original node's attribute
@@ -480,13 +399,56 @@ const nodeObj = initVal => {
     return nd;
 };
 
-//
-//if old is null
-//  make all the subnodes
-//else
-//  check if all the old subnodes exist in the new val
-//  if yes, do nothing
-//
+const transaction = (...args) => {
+    const len = args.length;
+    const func = args[len - 1];
+    const nodes = args
+        .splice(0, len - 1)
+        .map(x => (isArray(x) ? x : [x]))
+        .reduce((x, y) => x.concat(y));
+
+    const transactionReference = startTransaction(...nodes);
+    func();
+    endTransaction(transactionReference);
+};
+
+const startTransaction = (...nodes) => {
+    const delayedTransitions = new Set();
+    const delayedChanges = new Set();
+    nodes.forEach(nd => {
+        nd.target.inTransaction = true;
+        nd.target.delayedTransitions = delayedTransitions;
+        nd.target.delayedChanges = delayedChanges;
+    });
+    const transactionReference = {
+        nodes,
+        delayedTransitions,
+        delayedChanges
+    };
+    return transactionReference;
+};
+
+const endTransaction = transactionReference => {
+    const {
+        nodes,
+        delayedTransitions,
+        delayedChanges
+    } = transactionReference;
+    delayedChanges.forEach(({ target, value }) => {
+        target.old = target.val;
+        target.val = value;
+        target.changed = true;
+    });
+    delayedTransitions.forEach(tr => {
+        tr.func();
+    });
+    nodes.forEach(nd => {
+        nd.target.inTransaction = false;
+        nd.target.changed = false;
+        nd.target.delayedTransitions = null;
+        nd.target.delayedChanges = null;
+    });
+};
 
 // A tree of anything in which every children are actually nodes (DABR
 // nodes). You can define children as an array or only 1 element and
@@ -1239,10 +1201,13 @@ const Rect = (def = {}) => {
         posChanged: chan(),
         sizChanged: chan(),
         posAbsChanged: chan(),
-        sizAbsChanged: chan()
+        sizAbsChanged: chan(),
+        enablePosAbs: node(false),
+        enableSizAbs: node(false)
     };
 
     const defaultRectAttrs = {
+        tag: 'div',
         isRect: true,
         isSupp: false,
         isCore: true,
@@ -1453,6 +1418,9 @@ const tree = cond(x => x.isTree);
 // Apply function only to the most top-level element of the tree
 const top = f => tree => Tree(f(tree.elem), tree.children);
 
+const withTree = (tree, f) =>
+    Tree(f(tree.elem), tree.children);
+
 // Add render transitions related to layout (positioning)
 const addLayoutTriggers = (layout, elem, rect, parLayout) => {
     const sca = coord(parLayout.scale);
@@ -1460,6 +1428,7 @@ const addLayoutTriggers = (layout, elem, rect, parLayout) => {
     const pos = coord(layout.pos);
     const dPos = layout.disablePos;
     const posChanged = layout.posChanged;
+    const posAbsRender = layout.enablePosAbs;
     // rect.tran([pos[0], sca[0]], () => {
     //     const p = toLen(pos[0].val);
     //     const a = sca[0].val;
@@ -1472,15 +1441,48 @@ const addLayoutTriggers = (layout, elem, rect, parLayout) => {
     // });
 
     //const pos = coord(layout.pos);
-    rect.tran([pos, sca, dPos], () => {
-        if (!dPos.val) {
-            const [pRel, pPx] = splitCoord(pos.val);
-            const a = sca.val;
-            elem.style.left = `calc(${pRel[0] * a[0]}% + ${
-                pPx[0]
-            }px)`;
-            elem.style.top = `calc(${pRel[1] * a[1]}% + ${pPx[1]}px)`;
-            posChanged.put = true;
+    rect.tran([pos, sca, dPos, posAbsRender], () => {
+        if (!posAbsRender.val) {
+            if (!dPos.val) {
+                const [pRel, pPx] = splitCoord(pos.val);
+                const a = sca.val;
+                const pc = [pRel[0] * a[0], pRel[1] * a[1]];
+                if (pc[0] == 0) {
+                    elem.style.left = `${pPx[0]}px`;
+                } else {
+                    elem.style.left = `calc(${pc[0]}% + ${pPx[0]}px)`;
+                }
+                if (pc[0] == 0) {
+                    elem.style.top = `${pPx[1]}px`;
+                } else {
+                    elem.style.top = `calc(${pc[1]}% + ${pPx[1]}px)`;
+                }
+                posChanged.put = true;
+            } else if (dPos.val == 'x') {
+                const [pRel, pPx] = splitCoord(pos.val);
+                const a = sca.val;
+                const pc = pRel[1] * a[1];
+                //elem.style.left = `calc(${pRel[0] * a[0]}% + ${
+                //    pPx[0]
+                //}px)`;
+                if (pc == 0) {
+                    elem.style.top = `${pPx[1]}px`;
+                } else {
+                    elem.style.top = `calc(${pc}% + ${pPx[1]}px)`;
+                }
+                posChanged.put = true;
+            } else if (dPos.val == 'y') {
+                const [pRel, pPx] = splitCoord(pos.val);
+                const a = sca.val;
+                const pc = pRel[0] * a[0];
+                if (pc == 0) {
+                    elem.style.left = `${pPx[0]}px`;
+                } else {
+                    elem.style.left = `calc(${pc}% + ${pPx[0]}px)`;
+                }
+                //elem.style.top = `calc(${pRel[1] * a[1]}% + ${pPx[1]}px)`;
+                posChanged.put = true;
+            }
         }
     });
     //rect.renderTrans.add(posT);
@@ -1500,17 +1502,45 @@ const addLayoutTriggers = (layout, elem, rect, parLayout) => {
     const siz = coord(layout.siz);
     const dSiz = layout.disableSiz;
     const sizChanged = layout.sizChanged;
-    rect.tran([siz, sca, dSiz], () => {
-        if (!dSiz.val) {
-            const [sRel, sPx] = splitCoord(siz.val);
-            const a = sca.val;
-            elem.style.width = `calc(${sRel[0] * a[0]}% + ${
-                sPx[0]
-            }px)`;
-            elem.style.height = `calc(${sRel[1] * a[1]}% + ${
-                sPx[1]
-            }px)`;
-            sizChanged.put = true;
+    const sizAbsRender = layout.enableSizAbs;
+    rect.tran([siz, sca, dSiz, sizAbsRender], () => {
+        if (!sizAbsRender.val) {
+            if (!dSiz.val) {
+                const [sRel, sPx] = splitCoord(siz.val);
+                const a = sca.val;
+                const pc = [sRel[0] * a[0], sRel[1] * a[1]];
+                if (pc[0] == 0) {
+                    elem.style.width = `${sPx[0]}px`;
+                } else {
+                    elem.style.width = `calc(${pc[0]}% + ${sPx[0]}px)`;
+                }
+                if (pc[1] == 0) {
+                    elem.style.height = `${sPx[1]}px`;
+                } else {
+                    elem.style.height = `calc(${pc[1]}% + ${sPx[1]}px)`;
+                }
+                sizChanged.put = true;
+            } else if (dSiz.val == 'x') {
+                const [sRel, sPx] = splitCoord(siz.val);
+                const a = sca.val;
+                const pc = sRel[1] * a[1];
+                if (pc == 0) {
+                    elem.style.height = `${sPx[1]}px`;
+                } else {
+                    elem.style.height = `calc(${pc}% + ${sPx[1]}px)`;
+                }
+                sizChanged.put = true;
+            } else if (dSiz.val == 'y') {
+                const [sRel, sPx] = splitCoord(siz.val);
+                const a = sca.val;
+                const pc = sRel[0] * a[0];
+                if (pc == 0) {
+                    elem.style.width = `${sPx[0]}px`;
+                } else {
+                    elem.style.width = `calc(${pc}% + ${sPx[0]}px)`;
+                }
+                sizChanged.put = true;
+            }
         }
     });
     //rect.renderTrans.add(sizT);
@@ -1527,7 +1557,11 @@ const defaultLayoutReactivity = (
     pPosAbsN, // parent's absolute position
     pSizAbsN, // parent's absolute size
     posAbsN, // rect's absolute position
-    sizAbsN // rect's absolute size
+    sizAbsN, // rect's absolute size
+    enPos,
+    enSiz,
+    dPos,
+    dSiz
 ) => {
     // [posN, sizN, pScaleN, pPosAbsN, pSizAbsN, posAbsN, sizAbsN].map(
     //     coord
@@ -1560,7 +1594,9 @@ const defaultLayoutReactivity = (
     // );
 
     rect.tran(
-        [posN, sizN, pScaleN, pPosAbsN, pSizAbsN].map(coord),
+        [posN, sizN, pScaleN, pPosAbsN, pSizAbsN, enPos, enSiz].map(
+            coord
+        ),
         (pos, siz, pScale, pPosAbs, pSizAbs) => {
             const [posRel, posPx] = splitCoord(pos);
             const [sizRel, sizPx] = splitCoord(siz);
@@ -1574,7 +1610,39 @@ const defaultLayoutReactivity = (
                 posRel[1] * a[1] + pPosAbs[1]
             ];
             posAbsN.val = vectorPlus(posAbs, posPx);
+            if (enPos.val) {
+                if (!dPos.val) {
+                    if (dPos.val == 'x') {
+                        rect.inst.dom.style.left =
+                            posAbsN.val[0] - pPosAbs[0] + 'px';
+                    } else if (dPos.val == 'y') {
+                        rect.inst.dom.style.top =
+                            posAbsN.val[1] - pPosAbs[1] + 'px';
+                    } else {
+                        rect.inst.dom.style.left =
+                            posAbsN.val[0] - pPosAbs[0] + 'px';
+                        rect.inst.dom.style.top =
+                            posAbsN.val[1] - pPosAbs[1] + 'px';
+                    }
+                }
+            }
             sizAbsN.val = vectorPlus(sizAbs, sizPx);
+            if (enSiz.val) {
+                if (!dSiz.val) {
+                    if (dSiz.val == 'x') {
+                        rect.inst.dom.style.width =
+                            sizAbsN.val[0] + 'px';
+                    } else if (dSiz.val == 'y') {
+                        rect.inst.dom.style.height =
+                            sizAbsN.val[1] + 'px';
+                    } else {
+                        rect.inst.dom.style.width =
+                            sizAbsN.val[0] + 'px';
+                        rect.inst.dom.style.height =
+                            sizAbsN.val[1] + 'px';
+                    }
+                }
+            }
             rect.layout.posAbsChanged.put = true;
             rect.layout.sizAbsChanged.put = true;
         }
@@ -2468,7 +2536,7 @@ var observers = typeof WeakMap !== 'undefined' ? new WeakMap() : new MapShim();
  * ResizeObserver API. Encapsulates the ResizeObserver SPI implementation
  * exposing only those methods and properties that are defined in the spec.
  */
-var ResizeObserver = /** @class */ (function () {
+var ResizeObserver$1 = /** @class */ (function () {
     /**
      * Creates a new instance of ResizeObserver.
      *
@@ -2494,7 +2562,7 @@ var ResizeObserver = /** @class */ (function () {
     'unobserve',
     'disconnect'
 ].forEach(function (method) {
-    ResizeObserver.prototype[method] = function () {
+    ResizeObserver$1.prototype[method] = function () {
         var _a;
         return (_a = observers.get(this))[method].apply(_a, arguments);
     };
@@ -2505,7 +2573,7 @@ var index = (function () {
     if (typeof global$1.ResizeObserver !== 'undefined') {
         return global$1.ResizeObserver;
     }
-    return ResizeObserver;
+    return ResizeObserver$1;
 })();
 
 // Initializes Rect: creates DOM, adds layout, nodes, chans and style
@@ -2614,7 +2682,7 @@ const runInside = (rectT, parent) => {
     const rect = rectT.elem;
 
     addGlobalCSSOnce();
-    const elem = document.createElement('div');
+    const elem = document.createElement(rect.tag);
     addDabrCss(elem);
     parent.inst.dom.appendChild(elem);
 
@@ -2634,7 +2702,11 @@ const runInside = (rectT, parent) => {
         parent.layout.posAbs,
         parent.layout.sizAbs,
         lay.posAbs,
-        lay.sizAbs
+        lay.sizAbs,
+        lay.enablePosAbs,
+        lay.enableSizAbs,
+        lay.disablePos,
+        lay.disableSiz
     );
     // Trigger events for oldVersions as well. This way functions
     // working with olderVersions of rects (before preserveR's) get
@@ -2723,4 +2795,181 @@ const addDabrCss = elem => {
     elem.style['overflow-x'] = 'scroll';
 };
 
-export { Entry, Rect, RectT, Supp, SuppT, T, Tree, _mapT, _pathT, _walkT, addChans, addCoord, addLayoutTriggers, addLen, addNodes, addStyle, addSubNode, applyF, asPx, chan, cond, condElse, coord, copyCoord, copyLen, core, defaultLayoutReactivity, fromStruc, getPx, getRel, keyed, len, listen, listenOnce, listenRef, mapT, mulCoord, mulLen, node, nodeObj, pathT, preserveR, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, splitCoord, subNode, subNode1, supp, toLen, toNode, toStruc, top, tran, tranRef, tree, unsafeTran, unsafeTranRef, walkT, x, y };
+const External = (children, parent = Rect()) => {
+    const sizAbs = parent.layout.sizAbs;
+
+    const positions = new Map();
+    const sizes = new Map();
+
+    const repositionChild = child => {
+        if (child.elem.inst) {
+            const dom = child.elem.inst.dom;
+            const { top, left } = dom.getBoundingClientRect();
+            console.log(
+                'inside',
+                dom,
+                top,
+                left,
+                dom.getBoundingClientRect(),
+                positions.get(dom).val,
+                positions.get(dom)
+            );
+            positions.get(dom).val = asPx([left, top]);
+        }
+    };
+
+    const repositionAll = () => {
+        const nodes = [];
+        [...positions].entries(([, nd]) => {
+            nodes.push(nd);
+        });
+        transaction(nodes, () => {
+            children.forEach(repositionChild);
+        });
+    };
+
+    tran(sizAbs, repositionAll);
+
+    const resizeObs = new ResizeObserver(entries => {
+        const sizNodes = [];
+        [...sizes].entries(([, nd]) => {
+            sizNodes.push(nd);
+        });
+        transaction(sizNodes, () => {
+            entries.forEach(entry => {
+                const { width, height } = entry.contentRect;
+                console.log(
+                    'resizz',
+                    entry,
+                    width,
+                    height,
+                    entry.contentRect
+                );
+                if (width != 0 && height != 0) {
+                    sizes.get(entry.target).val = asPx([
+                        width,
+                        height
+                    ]);
+                }
+            });
+        });
+    });
+
+    const childrenRes = children.map(child => {
+        const rect = child.elem;
+
+        const externalRect = preserveR(rect, {
+            layout: {
+                disablePos: true,
+                disableSiz: true
+            },
+            css: {
+                //position: 'unset'
+            }
+        });
+
+        externalRect.withDOM(dom => {
+            positions.set(dom, externalRect.layout.pos);
+            sizes.set(dom, externalRect.layout.siz);
+
+            setTimeout(() => repositionChild(child), 0);
+            resizeObs.observe(dom);
+        });
+
+        return Tree(externalRect, child.children);
+    });
+
+    return Tree(parent, childrenRes);
+};
+
+const ExternalSiz = (children, parent = Rect()) => {
+    const positions = new Map();
+    const sizes = new Map();
+
+    const resizeObs = new ResizeObserver(entries => {
+        const sizNodes = [];
+        [...sizes].entries(([, nd]) => {
+            sizNodes.push(nd);
+        });
+        transaction(sizNodes, () => {
+            entries.forEach(entry => {
+                const { width, height } = entry.contentRect;
+                if (width != 0 && height != 0)
+                    sizes.get(entry.target).val = asPx([
+                        width,
+                        height
+                    ]);
+            });
+        });
+    });
+
+    const childrenRes = children.map(child => {
+        const rect = child.elem;
+
+        const externalRect = preserveR(rect, {
+            layout: {
+                disableSiz: true
+            }
+        });
+
+        externalRect.withDOM(dom => {
+            positions.set(dom, externalRect.layout.pos);
+            sizes.set(dom, externalRect.layout.siz);
+            resizeObs.observe(dom);
+        });
+
+        return Tree(externalRect, child.children);
+    });
+
+    return Tree(parent, childrenRes);
+};
+
+const ExternalPos = (children, parent = Rect()) => {
+    const sizAbs = parent.layout.sizAbs;
+
+    const positions = new Map();
+    const sizes = new Map();
+
+    const repositionChild = child => {
+        if (child.elem.inst) {
+            const dom = child.elem.inst.dom;
+            const { top, left } = dom.getBoundingClientRect();
+            positions.get(dom).val = asPx([left, top]);
+        }
+    };
+
+    const repositionAll = () => {
+        const posNodes = [];
+        [...positions].entries(([, nd]) => {
+            posNodes.push(nd);
+        });
+        transaction(posNodes, () => {
+            children.forEach(repositionChild);
+        });
+    };
+
+    tran(sizAbs, repositionAll);
+
+    const childrenRes = children.map(child => {
+        const rect = child.elem;
+
+        const externalRect = preserveR(rect, {
+            layout: {
+                disablePos: true
+            }
+        });
+
+        externalRect.withDOM(dom => {
+            positions.set(dom, externalRect.layout.pos);
+            sizes.set(dom, externalRect.layout.siz);
+
+            setTimeout(() => repositionChild(child), 0);
+        });
+
+        return Tree(externalRect, child.children);
+    });
+
+    return Tree(parent, childrenRes);
+};
+
+export { Entry, External, ExternalPos, ExternalSiz, Rect, RectT, Supp, SuppT, T, Tree, _mapT, _pathT, _walkT, addChans, addCoord, addLayoutTriggers, addLen, addNodes, addStyle, addSubNode, applyF, asPx, chan, cond, condElse, coord, copyCoord, copyLen, core, defaultLayoutReactivity, endTransaction, fromStruc, getPx, getRel, keyed, len, listen, listenOnce, listenRef, mapT, mulCoord, mulLen, node, nodeObj, pathT, preserveR, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, splitCoord, startTransaction, subNode, subNode1, supp, toLen, toNode, toStruc, top, tran, tranRef, transaction, tree, unsafeTran, unsafeTranRef, walkT, withTree, x, y };

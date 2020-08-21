@@ -120,7 +120,7 @@ const runInside = (rectT, parent) => {
     const rect = rectT.elem;
 
     addGlobalCSSOnce();
-    const elem = document.createElement('div');
+    const elem = document.createElement(rect.tag);
     addDabrCss(elem);
     parent.inst.dom.appendChild(elem);
 
@@ -140,7 +140,11 @@ const runInside = (rectT, parent) => {
         parent.layout.posAbs,
         parent.layout.sizAbs,
         lay.posAbs,
-        lay.sizAbs
+        lay.sizAbs,
+        lay.enablePosAbs,
+        lay.enableSizAbs,
+        lay.disablePos,
+        lay.disableSiz
     );
     // Trigger events for oldVersions as well. This way functions
     // working with olderVersions of rects (before preserveR's) get

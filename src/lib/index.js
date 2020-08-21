@@ -10,3 +10,4 @@ export * from './flex.js';
 export * from './addStyle.js';
 export * from './inline.js';
 export * from './image.js';
+export * from './text.js';
