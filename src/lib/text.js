@@ -1,6 +1,7 @@
 import { toNode, node, addSubNode, tran } from '../node.js';
 import { isObj } from '../utils/index.js';
 import { Supp, keyed, preserveR } from '../rect.js';
+import { preserveT } from '../rect-tree.js';
 import { Tree } from '../tree.js';
 import { proportional } from './proportional.js';
 import { line, Inline } from './inline.js';
@@ -41,26 +42,21 @@ export const Text = args => {
         verticalAlign
     };
 
-    return Inline(
-        'div',
-        { content, size: fontSize },
-        Supp({
-            isText: true,
-            data: keyed(Text, textObj),
-            layout: {
-                disablePos: true,
-                disableSiz: true
-            },
-            css: {
-                position: 'relative',
-                display: 'inline',
-                //'font-size': fontSize,
-                color: color,
-                'font-family': family,
-                'vertical-align': verticalAlign
-            }
-        })
-    );
+    return preserveT(Inline('div', { content, size: fontSize }), {
+        data: keyed(Text, textObj),
+        layout: {
+            disablePos: true,
+            disableSiz: true
+        },
+        css: {
+            position: 'relative',
+            display: 'inline',
+            //'font-size': fontSize,
+            color: color,
+            'font-family': family,
+            'vertical-align': verticalAlign
+        }
+    });
 };
 
 const smooth = num =>

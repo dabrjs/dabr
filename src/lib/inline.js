@@ -5,11 +5,12 @@ import { Supp } from '../rect.js';
 import { Tree } from '../tree.js';
 import { asPx, px, mulLen, addLen } from '../coord.js';
 import { Rect, preserveR, keyed } from '../rect.js';
+import { preserveT } from '../rect-tree.js';
 import { flex, flexY } from './flex.js';
 import { isObj } from '../utils/index.js';
 import { ExternalPos } from '../external.js';
 
-export const Inline = (tag, params, rect = Rect()) => {
+export const Inline = (tag, params) => {
     let size;
     let content;
 
@@ -21,7 +22,8 @@ export const Inline = (tag, params, rect = Rect()) => {
         content = toNode(params);
     }
 
-    const r = preserveR(rect, {
+    const r = Rect({
+        inline: true,
         tag,
         layout: {
             disablePos: true,
@@ -45,40 +47,35 @@ export const Inline = (tag, params, rect = Rect()) => {
     return Tree(r);
 };
 
-export const paragraph = (trees, rect) => {
+export const toInline = tree =>
+    preserveT(tree, {
+        inline: true
+    });
+
+export const paragraph = trees => {
     const inlineds = trees.map(t =>
-        Tree(
-            preserveR(t.elem, {
-                css: {
-                    display: t.elem.isText
-                        ? 'inline'
-                        : 'inline-block',
-                    position: 'relative',
-                    'vertical-align': 'middle'
-                }
-            }),
-            t.children
-        )
+        preserveT(t, {
+            css: {
+                display: t.elem.inline ? 'inline' : 'inline-block',
+                position: 'relative',
+                'vertical-align': 'middle'
+            }
+        })
     );
 
-    return flexY(ExternalPos(inlineds, rect));
+    return flexY(ExternalPos(inlineds));
 };
 
-export const line = (trees, rect) => {
+export const line = trees => {
     const inlineds = trees.map(t =>
-        Tree(
-            preserveR(t.elem, {
-                css: {
-                    display: t.elem.isText
-                        ? 'inline'
-                        : 'inline-block',
-                    position: 'relative',
-                    'vertical-align': 'middle'
-                }
-            }),
-            t.children
-        )
+        preserveT(t, {
+            css: {
+                display: t.elem.isText ? 'inline' : 'inline-block',
+                position: 'relative',
+                'vertical-align': 'middle'
+            }
+        })
     );
 
-    return flex(ExternalPos(inlineds, rect));
+    return flex(ExternalPos(inlineds));
 };

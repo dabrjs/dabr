@@ -1348,6 +1348,9 @@ const top = f => tree => Tree(f(tree.elem), tree.children);
 const withTree = (tree, f) =>
     Tree(f(tree.elem), tree.children);
 
+const preserveT = (tree, changes) =>
+    withTree(tree, r => preserveR(r, changes));
+
 // Add render transitions related to layout (positioning)
 const addLayoutTriggers = (layout, elem, rect, parLayout) => {
     const sca = coord(parLayout.scale);
@@ -2722,7 +2725,8 @@ const addDabrCss = elem => {
     elem.style['overflow-x'] = 'scroll';
 };
 
-const External = (children, parent = Rect()) => {
+const External = children => {
+    const parent = Rect();
     const sizAbs = parent.layout.sizAbs;
 
     const positions = new Map();
@@ -2790,7 +2794,9 @@ const External = (children, parent = Rect()) => {
     return Tree(parent, childrenRes);
 };
 
-const ExternalSiz = (children, parent = Rect()) => {
+const ExternalSiz = children => {
+    const parent = Rect();
+
     const positions = new Map();
     const sizes = new Map();
 
@@ -2832,7 +2838,8 @@ const ExternalSiz = (children, parent = Rect()) => {
     return Tree(parent, childrenRes);
 };
 
-const ExternalPos = (children, parent = Rect()) => {
+const ExternalPos = children => {
+    const parent = Rect();
     const sizAbs = parent.layout.sizAbs;
 
     const positions = new Map();
@@ -2880,4 +2887,4 @@ const ExternalPos = (children, parent = Rect()) => {
     return Tree(parent, childrenRes);
 };
 
-export { Entry, External, ExternalPos, ExternalSiz, Rect, RectT, Supp, SuppT, T, Tree, _mapT, _pathT, _walkT, addChans, addCoord, addLayoutTriggers, addLen, addNodes, addStyle, addSubNode, applyF, asPx, chan, cond, condElse, coord, copyCoord, copyLen, core, defaultLayoutReactivity, endTransaction, fromStruc, getPx, getRel, keyed, len, listen, listenOnce, listenRef, mapT, mulCoord, mulLen, node, nodeObj, pathT, preserveR, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, splitCoord, startTransaction, subNode, subNode1, supp, toLen, toNode, toStruc, top, tran, tranRef, transaction, tree, unsafeTran, unsafeTranRef, walkT, withTree, x, y };
+export { Entry, External, ExternalPos, ExternalSiz, Rect, RectT, Supp, SuppT, T, Tree, _mapT, _pathT, _walkT, addChans, addCoord, addLayoutTriggers, addLen, addNodes, addStyle, addSubNode, applyF, asPx, chan, cond, condElse, coord, copyCoord, copyLen, core, defaultLayoutReactivity, endTransaction, fromStruc, getPx, getRel, keyed, len, listen, listenOnce, listenRef, mapT, mulCoord, mulLen, node, nodeObj, pathT, preserveR, preserveT, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, splitCoord, startTransaction, subNode, subNode1, supp, toLen, toNode, toStruc, top, tran, tranRef, transaction, tree, unsafeTran, unsafeTranRef, walkT, withTree, x, y };

@@ -46,7 +46,8 @@ import {
     startTransaction,
     endTransaction,
     withTree,
-    Inline
+    Inline,
+    toInline
 } from '../dist/dabr.js';
 import { randomColor } from '../src/utils/index.js';
 
@@ -84,11 +85,11 @@ window.j2 = j2();
 window.t1 = t1();
 
 const gh = () =>
-    vertical([
+    paragraph([
         j1(),
         window.t1,
         j2(),
-        t3(),
+        //t3(),
         j1(),
         t1(),
         t1(),

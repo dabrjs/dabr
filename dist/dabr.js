@@ -1367,6 +1367,9 @@ const top = f => tree => Tree(f(tree.elem), tree.children);
 const withTree = (tree, f) =>
     Tree(f(tree.elem), tree.children);
 
+const preserveT = (tree, changes) =>
+    withTree(tree, r => preserveR(r, changes));
+
 // Add render transitions related to layout (positioning)
 const addLayoutTriggers = (layout, elem, rect, parLayout) => {
     const sca = coord(parLayout.scale);
@@ -2818,7 +2821,8 @@ const calcProportional = (prop, siz) => {
     return [offset, s];
 };
 
-const External = (children, parent = Rect()) => {
+const External = children => {
+    const parent = Rect();
     const sizAbs = parent.layout.sizAbs;
 
     const positions = new Map();
@@ -2886,7 +2890,9 @@ const External = (children, parent = Rect()) => {
     return Tree(parent, childrenRes);
 };
 
-const ExternalSiz = (children, parent = Rect()) => {
+const ExternalSiz = children => {
+    const parent = Rect();
+
     const positions = new Map();
     const sizes = new Map();
 
@@ -2928,7 +2934,8 @@ const ExternalSiz = (children, parent = Rect()) => {
     return Tree(parent, childrenRes);
 };
 
-const ExternalPos = (children, parent = Rect()) => {
+const ExternalPos = children => {
+    const parent = Rect();
     const sizAbs = parent.layout.sizAbs;
 
     const positions = new Map();
@@ -3643,7 +3650,7 @@ const flexY = tree => {
     return Tree(res, resChildren);
 };
 
-const Inline = (tag, params, rect = Rect()) => {
+const Inline = (tag, params) => {
     let size;
     let content;
 
@@ -3655,7 +3662,8 @@ const Inline = (tag, params, rect = Rect()) => {
         content = toNode(params);
     }
 
-    const r = preserveR(rect, {
+    const r = Rect({
+        inline: true,
         tag,
         layout: {
             disablePos: true,
@@ -3679,42 +3687,37 @@ const Inline = (tag, params, rect = Rect()) => {
     return Tree(r);
 };
 
-const paragraph = (trees, rect) => {
+const toInline = tree =>
+    preserveT(tree, {
+        inline: true
+    });
+
+const paragraph = trees => {
     const inlineds = trees.map(t =>
-        Tree(
-            preserveR(t.elem, {
-                css: {
-                    display: t.elem.isText
-                        ? 'inline'
-                        : 'inline-block',
-                    position: 'relative',
-                    'vertical-align': 'middle'
-                }
-            }),
-            t.children
-        )
+        preserveT(t, {
+            css: {
+                display: t.elem.inline ? 'inline' : 'inline-block',
+                position: 'relative',
+                'vertical-align': 'middle'
+            }
+        })
     );
 
-    return flexY(ExternalPos(inlineds, rect));
+    return flexY(ExternalPos(inlineds));
 };
 
-const line = (trees, rect) => {
+const line = trees => {
     const inlineds = trees.map(t =>
-        Tree(
-            preserveR(t.elem, {
-                css: {
-                    display: t.elem.isText
-                        ? 'inline'
-                        : 'inline-block',
-                    position: 'relative',
-                    'vertical-align': 'middle'
-                }
-            }),
-            t.children
-        )
+        preserveT(t, {
+            css: {
+                display: t.elem.isText ? 'inline' : 'inline-block',
+                position: 'relative',
+                'vertical-align': 'middle'
+            }
+        })
     );
 
-    return flex(ExternalPos(inlineds, rect));
+    return flex(ExternalPos(inlineds));
 };
 
 const space = s =>
@@ -3852,26 +3855,21 @@ const Text = args => {
         verticalAlign
     };
 
-    return Inline(
-        'div',
-        { content, size: fontSize },
-        Supp({
-            isText: true,
-            data: keyed(Text, textObj),
-            layout: {
-                disablePos: true,
-                disableSiz: true
-            },
-            css: {
-                position: 'relative',
-                display: 'inline',
-                //'font-size': fontSize,
-                color: color,
-                'font-family': family,
-                'vertical-align': verticalAlign
-            }
-        })
-    );
+    return preserveT(Inline('div', { content, size: fontSize }), {
+        data: keyed(Text, textObj),
+        layout: {
+            disablePos: true,
+            disableSiz: true
+        },
+        css: {
+            position: 'relative',
+            display: 'inline',
+            //'font-size': fontSize,
+            color: color,
+            'font-family': family,
+            'vertical-align': verticalAlign
+        }
+    });
 };
 
 const smooth = num =>
@@ -3918,4 +3916,4 @@ const fitText = (textNode, tree) => {
     return res;
 };
 
-export { EXPONENTIAL, Entry, External, ExternalPos, ExternalSiz, FLIP, Img, Inline, LINEAR, QUADRATIC, Rect, RectT, Supp, SuppT, T, Text, Tree, _border, _container, _mapT, _pathT, _proportional, _style, _walkT, addChans, addCoord, addLayoutTriggers, addLen, addNodes, addStyle, addSubNode, applyF, asPx, border, chan, cond, condElse, container, coord, copyCoord, copyLen, core, defaultLayoutReactivity, endTransaction, fitImg, fitText, flex, flexX, flexY, fromStruc, getPx, getRel, hashNode, horizontal, horizontalSpace, keyed, len, line, listen, listenOnce, listenRef, mapT, mulCoord, mulLen, node, nodeObj, paragraph, pathT, preserveR, proportional, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, scrollbar, space, splitCoord, startTransaction, stopTimed, style, subNode, subNode1, supp, switcher, timed, toLen, toNode, toStruc, top, tran, tranRef, transaction, tree, unsafeTran, unsafeTranRef, vertical, verticalSpace, walkT, withTree, x, y };
+export { EXPONENTIAL, Entry, External, ExternalPos, ExternalSiz, FLIP, Img, Inline, LINEAR, QUADRATIC, Rect, RectT, Supp, SuppT, T, Text, Tree, _border, _container, _mapT, _pathT, _proportional, _style, _walkT, addChans, addCoord, addLayoutTriggers, addLen, addNodes, addStyle, addSubNode, applyF, asPx, border, chan, cond, condElse, container, coord, copyCoord, copyLen, core, defaultLayoutReactivity, endTransaction, fitImg, fitText, flex, flexX, flexY, fromStruc, getPx, getRel, hashNode, horizontal, horizontalSpace, keyed, len, line, listen, listenOnce, listenRef, mapT, mulCoord, mulLen, node, nodeObj, paragraph, pathT, preserveR, preserveT, proportional, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, scrollbar, space, splitCoord, startTransaction, stopTimed, style, subNode, subNode1, supp, switcher, timed, toInline, toLen, toNode, toStruc, top, tran, tranRef, transaction, tree, unsafeTran, unsafeTranRef, vertical, verticalSpace, walkT, withTree, x, y };

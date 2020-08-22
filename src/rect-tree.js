@@ -1,5 +1,5 @@
 import { Tree, mapT } from './tree.js';
-import { Rect, Supp } from './rect.js';
+import { Rect, Supp, preserveR } from './rect.js';
 
 // A set of functions for easy Tree of Rect manipulation
 
@@ -30,3 +30,6 @@ export const top = f => tree => Tree(f(tree.elem), tree.children);
 
 export const withTree = (tree, f) =>
     Tree(f(tree.elem), tree.children);
+
+export const preserveT = (tree, changes) =>
+    withTree(tree, r => preserveR(r, changes));

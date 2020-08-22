@@ -12,7 +12,8 @@ import { withTree } from './rect-tree.js';
 import { isObj } from './utils/index.js';
 import { proportional } from './lib/proportional.js';
 
-export const External = (children, parent = Rect()) => {
+export const External = children => {
+    const parent = Rect();
     const sizAbs = parent.layout.sizAbs;
 
     const positions = new Map();
@@ -80,7 +81,9 @@ export const External = (children, parent = Rect()) => {
     return Tree(parent, childrenRes);
 };
 
-export const ExternalSiz = (children, parent = Rect()) => {
+export const ExternalSiz = children => {
+    const parent = Rect();
+
     const positions = new Map();
     const sizes = new Map();
 
@@ -122,7 +125,8 @@ export const ExternalSiz = (children, parent = Rect()) => {
     return Tree(parent, childrenRes);
 };
 
-export const ExternalPos = (children, parent = Rect()) => {
+export const ExternalPos = children => {
+    const parent = Rect();
     const sizAbs = parent.layout.sizAbs;
 
     const positions = new Map();
