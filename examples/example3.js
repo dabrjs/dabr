@@ -575,7 +575,7 @@ const j2 = () =>
     );
 
 const t1 = () =>
-    Text({ content: 'sdlpsdp\n sfpo ifosf', size: '20px' });
+    Text({ content: 'sdlpsdp sfpo ifosf', size: '20px' });
 
 const t3 = () => Inline('pre', 'hel\nlo');
 

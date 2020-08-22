@@ -53,6 +53,7 @@ export const flex = tree => {
 
     return Tree(res, resChildren);
 };
+
 export const flexX = tree => {
     const rect = tree.elem;
 

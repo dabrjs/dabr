@@ -30,8 +30,8 @@ export const Inline = (tag, params, rect = Rect()) => {
         css: {
             position: 'relative',
             display: 'inline',
-            width: 'auto', //'max-content',
-            height: 'auto', //'max-content',
+            width: 'max-content',
+            height: 'max-content',
             'font-size': size
         }
     });
@@ -69,7 +69,9 @@ export const line = (trees, rect) => {
         Tree(
             preserveR(t.elem, {
                 css: {
-                    display: t.elem.text ? 'inline' : 'inline-block',
+                    display: t.elem.isText
+                        ? 'inline'
+                        : 'inline-block',
                     position: 'relative',
                     'vertical-align': 'middle'
                 }

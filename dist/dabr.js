@@ -3554,6 +3554,7 @@ const flex = tree => {
 
     return Tree(res, resChildren);
 };
+
 const flexX = tree => {
     const rect = tree.elem;
 
@@ -3702,7 +3703,9 @@ const line = (trees, rect) => {
         Tree(
             preserveR(t.elem, {
                 css: {
-                    display: t.elem.text ? 'inline' : 'inline-block',
+                    display: t.elem.isText
+                        ? 'inline'
+                        : 'inline-block',
                     position: 'relative',
                     'vertical-align': 'middle'
                 }
@@ -3853,7 +3856,7 @@ const Text = args => {
         'div',
         { content, size: fontSize },
         Supp({
-            text: textObj,
+            isText: true,
             data: keyed(Text, textObj),
             layout: {
                 disablePos: true,
