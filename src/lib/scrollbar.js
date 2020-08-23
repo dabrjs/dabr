@@ -69,7 +69,8 @@ export const scrollbar = tree => {
                 if (res < 1) res = 1;
                 if (res > 100) res = 100;
                 oldVal = val;
-                timed(scroll, { finalVal: [0, res], totalTime: 100 });
+                //timed(scroll, { finalVal: [0, res], totalTime: 100 });
+                scroll.val = [0, res];
             }
         }
     });
