@@ -660,7 +660,6 @@ var addStyle = tree =>
                 const nd = toNode(val);
                 const ans = styleAttrs[name];
                 if (ans) {
-                    console.log('jjsd', r);
                     const tr = ans({
                         node: nd,
                         elem: r.inst.dom,
@@ -2695,16 +2694,8 @@ const addChildrenTrigger = (children, parent) => {
         let alt = children.old;
         if (!alt) alt = [];
         if (!neu) neu = [];
-        console.log(
-            'sl, neu',
-            alt,
-            neu,
-            alt[0] == neu[0],
-            alt[0] == neu[1]
-        );
         const removed = alt.filter(x => !neu.includes(x));
         const created = neu.filter(x => !alt.includes(x));
-        console.log('ayeooo', removed, created, children);
         created.forEach(x => runInside(x, parent));
         removed.forEach(x => removeRect(x));
     });
@@ -3121,16 +3112,6 @@ const Cond = (route, routeRectMap) => {
     const children = node([]);
     const siz = node([100, 100]);
     const initialized = {};
-    tran(children, vvv => {
-        console.log(
-            'ahaaaa',
-            children.val,
-            children.old,
-            children.val[0]
-                ? children.val[0] == children.old[0]
-                : null
-        );
-    });
     tran([route], newRoute => {
         const rectF = routeRectMap[newRoute];
         if (rectF) {
@@ -3147,21 +3128,7 @@ const Cond = (route, routeRectMap) => {
                 });
                 const show = node(true);
                 const rectRef = container(show, rectF());
-                console.log('hildren', children, initialized);
-                // AFTER WE SET CHILDREN NODE HERE, THE MAPT IS GOING TO
-                // DEFINE ANOTHER ONE
                 children.val = children.val.concat([rectRef]);
-                if (
-                    children.val &&
-                    children.old &&
-                    children.val[1] &&
-                    children.old[0]
-                )
-                    console.log(
-                        'kdkskdskd',
-                        children.val[0] == children.old[0],
-                        children.val[1] == children.old[0]
-                    );
                 initialized[newRoute] = rectRef;
             }
         }

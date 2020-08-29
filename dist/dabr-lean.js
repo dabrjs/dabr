@@ -641,7 +641,6 @@ var addStyle = tree =>
                 const nd = toNode(val);
                 const ans = styleAttrs[name];
                 if (ans) {
-                    console.log('jjsd', r);
                     const tr = ans({
                         node: nd,
                         elem: r.inst.dom,
@@ -2676,16 +2675,8 @@ const addChildrenTrigger = (children, parent) => {
         let alt = children.old;
         if (!alt) alt = [];
         if (!neu) neu = [];
-        console.log(
-            'sl, neu',
-            alt,
-            neu,
-            alt[0] == neu[0],
-            alt[0] == neu[1]
-        );
         const removed = alt.filter(x => !neu.includes(x));
         const created = neu.filter(x => !alt.includes(x));
-        console.log('ayeooo', removed, created, children);
         created.forEach(x => runInside(x, parent));
         removed.forEach(x => removeRect(x));
     });
