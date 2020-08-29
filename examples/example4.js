@@ -47,7 +47,8 @@ import {
     endTransaction,
     withTree,
     Inline,
-    toInline
+    toInline,
+    Cond
 } from '../dist/dabr.js';
 import { randomColor } from '../src/utils/index.js';
 
@@ -116,6 +117,8 @@ const gh = () =>
         window.j2
     ]);
 
+window.c = node(1);
+
 const ggh = () =>
     Tree(
         Rect({
@@ -124,11 +127,21 @@ const ggh = () =>
                 siz: [50, 100]
             }
         }),
-        vertical([gh(), gh(), gh(), gh(), gh()])
+        Cond(window.c, { 1: gh, 2: gh, 3: gh, 4: gh, 5: gh })
     );
 
 window.gh = gh;
 //window.th = node('Heyyyyy');
 //const hg = fitText2(window.th, Tree(Rect()));
 
-run(ggh());
+const styleF = t => mapT(t, x => x);
+
+run(styleF(ggh()));
+
+const o1 = {};
+const o2 = {};
+const o3 = {};
+
+const a1 = [o1];
+const a2 = a1.concat([o2]);
+console.log('??????????', a1[0] == a2[0]);

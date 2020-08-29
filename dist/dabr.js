@@ -539,15 +539,27 @@ const Tree = (elem, ...childrens) => {
 const T = Tree;
 
 // (a -> b) -> Tree a -> Tree b
-const mapT = (tree, f, path = []) =>
-    Tree(
-        f(tree.elem, tree, path),
-        tree.children.isEntry
-            ? tree.children
-            : tran(tree.children, chs =>
-                  chs.map((ch, i) => mapT(ch, f, path.concat(i)))
-              )
-    );
+const mapT = (tree, f, path = []) => {
+    const elemRes = f(tree.elem, tree, path);
+    const childrenRes = tree.children.isEntry
+          ? tree.children
+          : tran(tree.children, chs =>
+                 chs.map((ch, i) => mapT(ch, f, path.concat(i)))
+                );
+    tree.elem = elemRes;
+    tree.children = childrenRes;
+    return tree;
+};
+
+// export const mapT = (tree, f, path = []) =>
+//     Tree(
+//         f(tree.elem, tree, path),
+//         tree.children.isEntry
+//             ? tree.children
+//             : tran(tree.children, chs =>
+//                    chs.map((ch, i) => mapT(ch, f, path.concat(i)))
+//                   )
+//     );
 const _mapT = (f, path = []) => tree => mapT(tree, f, path);
 
 // Special object used to indicate entry-points to flatten Trees of
@@ -648,6 +660,7 @@ var addStyle = tree =>
                 const nd = toNode(val);
                 const ans = styleAttrs[name];
                 if (ans) {
+                    console.log('jjsd', r);
                     const tr = ans({
                         node: nd,
                         elem: r.inst.dom,
@@ -2682,8 +2695,16 @@ const addChildrenTrigger = (children, parent) => {
         let alt = children.old;
         if (!alt) alt = [];
         if (!neu) neu = [];
+        console.log(
+            'sl, neu',
+            alt,
+            neu,
+            alt[0] == neu[0],
+            alt[0] == neu[1]
+        );
         const removed = alt.filter(x => !neu.includes(x));
         const created = neu.filter(x => !alt.includes(x));
+        console.log('ayeooo', removed, created, children);
         created.forEach(x => runInside(x, parent));
         removed.forEach(x => removeRect(x));
     });
@@ -3096,6 +3117,69 @@ const switcher = (route, routeRectMap) => {
     );
 };
 
+const Cond = (route, routeRectMap) => {
+    const children = node([]);
+    const siz = node([100, 100]);
+    const initialized = {};
+    tran(children, vvv => {
+        console.log(
+            'ahaaaa',
+            children.val,
+            children.old,
+            children.val[0]
+                ? children.val[0] == children.old[0]
+                : null
+        );
+    });
+    tran([route], newRoute => {
+        const rectF = routeRectMap[newRoute];
+        if (rectF) {
+            if (initialized[newRoute]) {
+                // already intiialized
+                children.val.map(ch => {
+                    ch.elem.style.show.val = false;
+                });
+                initialized[newRoute].elem.style.show.val = true;
+            } else {
+                // not initialized
+                children.val.map(ch => {
+                    ch.elem.style.show.val = false;
+                });
+                const show = node(true);
+                const rectRef = container(show, rectF());
+                console.log('hildren', children, initialized);
+                // AFTER WE SET CHILDREN NODE HERE, THE MAPT IS GOING TO
+                // DEFINE ANOTHER ONE
+                children.val = children.val.concat([rectRef]);
+                if (
+                    children.val &&
+                    children.old &&
+                    children.val[1] &&
+                    children.old[0]
+                )
+                    console.log(
+                        'kdkskdskd',
+                        children.val[0] == children.old[0],
+                        children.val[1] == children.old[0]
+                    );
+                initialized[newRoute] = rectRef;
+            }
+        }
+        // hack to fiz some problems when switch happens
+        siz.val = [{ rel: 100, px: 0.01 }, 100];
+        siz.val = [100, 100];
+    });
+    return Tree(
+        Supp({
+            layout: {
+                pos: [0, 0],
+                siz
+            }
+        }),
+        children
+    );
+};
+
 // Time functions for animation control from 0 to 1
 const LINEAR = t => t;
 const QUADRATIC = t => t * t;
@@ -3358,13 +3442,7 @@ const scrollbar = tree => {
     });
 
     const outterSizAbs = node([0, 0]);
-
-    const drag = chan();
-    const over = chan();
-    const out = chan();
-    let dragging = false;
     const innerSiz = node([50, 5]);
-    let oldVal = null;
     const click = chan();
     //listen([click], changePos(click));
     listen([click], () => {
@@ -3378,44 +3456,44 @@ const scrollbar = tree => {
             ];
         }
     });
-    listen([drag], () => {
-        const val = drag.get;
-        if (
-            !oldVal ||
-            !(
-                oldVal.clientY - val.clientY <
-                oldVal.layerY - val.layerY
-            )
-        ) {
-            if (val == false) {
-                dragging = false;
-                innerPos.val = [50, innerPos.val[1]];
-                innerSiz.val = [50, 5];
-            } else {
-                dragging = true;
-                innerPos.val = [0, innerPos.val[1]];
-                innerSiz.val = [100, 5];
-                let res = (val.layerY / outterSizAbs.val[1]) * 100;
-                if (res < 1) res = 1;
-                if (res > 100) res = 100;
-                oldVal = val;
-                //timed(scroll, { finalVal: [0, res], totalTime: 100 });
-                scroll.val = [0, res];
-            }
-        }
-    });
+    // listen([drag], () => {
+    //     const val = drag.get;
+    //     if (
+    //         !oldVal ||
+    //         !(
+    //             oldVal.clientY - val.clientY <
+    //             oldVal.layerY - val.layerY
+    //         )
+    //     ) {
+    //         if (val == false) {
+    //             dragging = false;
+    //             innerPos.val = [50, innerPos.val[1]];
+    //             innerSiz.val = [50, 5];
+    //         } else {
+    //             dragging = true;
+    //             innerPos.val = [0, innerPos.val[1]];
+    //             innerSiz.val = [100, 5];
+    //             let res = (val.layerY / outterSizAbs.val[1]) * 100;
+    //             if (res < 1) res = 1;
+    //             if (res > 100) res = 100;
+    //             oldVal = val;
+    //             //timed(scroll, { finalVal: [0, res], totalTime: 100 });
+    //             scroll.val = [0, res];
+    //         }
+    //     }
+    // });
     listen([over], () => {
-        if (!dragging) {
+        {
             innerPos.val = [0, innerPos.val[1]];
             innerSiz.val = [100, 5];
         }
     });
-    listen([out], () => {
-        if (!dragging) {
-            innerPos.val = [50, innerPos.val[1]];
-            innerSiz.val = [50, 5];
-        }
-    });
+    // listen([out], () => {
+    //     if (!dragging) {
+    //         innerPos.val = [50, innerPos.val[1]];
+    //         innerSiz.val = [50, 5];
+    //     }
+    // });
     const sbar = Tree(
         Rect({
             layout: {
@@ -3424,8 +3502,8 @@ const scrollbar = tree => {
                 sizAbs: outterSizAbs
             },
             events: {
-                click,
-                drag
+                click
+                //drag
             }
         }),
         RectT({
@@ -3917,4 +3995,4 @@ const fitText = (textNode, tree) => {
     return res;
 };
 
-export { EXPONENTIAL, Entry, External, ExternalPos, ExternalSiz, FLIP, Img, Inline, LINEAR, QUADRATIC, Rect, RectT, Supp, SuppT, T, Text, Tree, _border, _container, _mapT, _pathT, _proportional, _style, _walkT, addChans, addCoord, addLayoutTriggers, addLen, addNodes, addStyle, addSubNode, applyF, asPx, border, chan, cond, condElse, container, coord, copyCoord, copyLen, core, defaultLayoutReactivity, endTransaction, fitImg, fitText, flex, flexX, flexY, fromStruc, getPx, getRel, hashNode, horizontal, horizontalSpace, keyed, len, line, listen, listenOnce, listenRef, mapT, mulCoord, mulLen, node, nodeObj, paragraph, pathT, preserveR, preserveT, proportional, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, scrollbar, space, splitCoord, startTransaction, stopTimed, style, subNode, subNode1, supp, switcher, timed, toInline, toLen, toNode, toStruc, top, tran, tranRef, transaction, tree, unsafeTran, unsafeTranRef, vertical, verticalSpace, walkT, withTree, x, y };
+export { Cond, EXPONENTIAL, Entry, External, ExternalPos, ExternalSiz, FLIP, Img, Inline, LINEAR, QUADRATIC, Rect, RectT, Supp, SuppT, T, Text, Tree, _border, _container, _mapT, _pathT, _proportional, _style, _walkT, addChans, addCoord, addLayoutTriggers, addLen, addNodes, addStyle, addSubNode, applyF, asPx, border, chan, cond, condElse, container, coord, copyCoord, copyLen, core, defaultLayoutReactivity, endTransaction, fitImg, fitText, flex, flexX, flexY, fromStruc, getPx, getRel, hashNode, horizontal, horizontalSpace, keyed, len, line, listen, listenOnce, listenRef, mapT, mulCoord, mulLen, node, nodeObj, paragraph, pathT, preserveR, preserveT, proportional, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, scrollbar, space, splitCoord, startTransaction, stopTimed, style, subNode, subNode1, supp, switcher, timed, toInline, toLen, toNode, toStruc, top, tran, tranRef, transaction, tree, unsafeTran, unsafeTranRef, vertical, verticalSpace, walkT, withTree, x, y };

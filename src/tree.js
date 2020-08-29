@@ -71,15 +71,27 @@ export const Tree = (elem, ...childrens) => {
 export const T = Tree;
 
 // (a -> b) -> Tree a -> Tree b
-export const mapT = (tree, f, path = []) =>
-    Tree(
-        f(tree.elem, tree, path),
-        tree.children.isEntry
-            ? tree.children
-            : tran(tree.children, chs =>
-                  chs.map((ch, i) => mapT(ch, f, path.concat(i)))
-              )
-    );
+export const mapT = (tree, f, path = []) => {
+    const elemRes = f(tree.elem, tree, path);
+    const childrenRes = tree.children.isEntry
+          ? tree.children
+          : tran(tree.children, chs =>
+                 chs.map((ch, i) => mapT(ch, f, path.concat(i)))
+                );
+    tree.elem = elemRes;
+    tree.children = childrenRes;
+    return tree;
+};
+
+// export const mapT = (tree, f, path = []) =>
+//     Tree(
+//         f(tree.elem, tree, path),
+//         tree.children.isEntry
+//             ? tree.children
+//             : tran(tree.children, chs =>
+//                    chs.map((ch, i) => mapT(ch, f, path.concat(i)))
+//                   )
+//     );
 export const _mapT = (f, path = []) => tree => mapT(tree, f, path);
 
 // Special object used to indicate entry-points to flatten Trees of

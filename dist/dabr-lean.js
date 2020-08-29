@@ -520,15 +520,27 @@ const Tree = (elem, ...childrens) => {
 const T = Tree;
 
 // (a -> b) -> Tree a -> Tree b
-const mapT = (tree, f, path = []) =>
-    Tree(
-        f(tree.elem, tree, path),
-        tree.children.isEntry
-            ? tree.children
-            : tran(tree.children, chs =>
-                  chs.map((ch, i) => mapT(ch, f, path.concat(i)))
-              )
-    );
+const mapT = (tree, f, path = []) => {
+    const elemRes = f(tree.elem, tree, path);
+    const childrenRes = tree.children.isEntry
+          ? tree.children
+          : tran(tree.children, chs =>
+                 chs.map((ch, i) => mapT(ch, f, path.concat(i)))
+                );
+    tree.elem = elemRes;
+    tree.children = childrenRes;
+    return tree;
+};
+
+// export const mapT = (tree, f, path = []) =>
+//     Tree(
+//         f(tree.elem, tree, path),
+//         tree.children.isEntry
+//             ? tree.children
+//             : tran(tree.children, chs =>
+//                    chs.map((ch, i) => mapT(ch, f, path.concat(i)))
+//                   )
+//     );
 const _mapT = (f, path = []) => tree => mapT(tree, f, path);
 
 // Special object used to indicate entry-points to flatten Trees of
@@ -629,6 +641,7 @@ var addStyle = tree =>
                 const nd = toNode(val);
                 const ans = styleAttrs[name];
                 if (ans) {
+                    console.log('jjsd', r);
                     const tr = ans({
                         node: nd,
                         elem: r.inst.dom,
@@ -2663,8 +2676,16 @@ const addChildrenTrigger = (children, parent) => {
         let alt = children.old;
         if (!alt) alt = [];
         if (!neu) neu = [];
+        console.log(
+            'sl, neu',
+            alt,
+            neu,
+            alt[0] == neu[0],
+            alt[0] == neu[1]
+        );
         const removed = alt.filter(x => !neu.includes(x));
         const created = neu.filter(x => !alt.includes(x));
+        console.log('ayeooo', removed, created, children);
         created.forEach(x => runInside(x, parent));
         removed.forEach(x => removeRect(x));
     });

@@ -45,3 +45,42 @@ export const switcher = (route, routeRectMap) => {
         children
     );
 };
+
+export const Cond = (route, routeRectMap) => {
+    const children = node([]);
+    const siz = node([100, 100]);
+    const initialized = {};
+    tran([route], newRoute => {
+        const rectF = routeRectMap[newRoute];
+        if (rectF) {
+            if (initialized[newRoute]) {
+                // already intiialized
+                children.val.map(ch => {
+                    ch.elem.style.show.val = false;
+                });
+                initialized[newRoute].elem.style.show.val = true;
+            } else {
+                // not initialized
+                children.val.map(ch => {
+                    ch.elem.style.show.val = false;
+                });
+                const show = node(true);
+                const rectRef = container(show, rectF());
+                children.val = children.val.concat([rectRef]);
+                initialized[newRoute] = rectRef;
+            }
+        }
+        // hack to fiz some problems when switch happens
+        siz.val = [{ rel: 100, px: 0.01 }, 100];
+        siz.val = [100, 100];
+    });
+    return Tree(
+        Supp({
+            layout: {
+                pos: [0, 0],
+                siz
+            }
+        }),
+        children
+    );
+};
