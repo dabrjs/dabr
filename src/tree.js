@@ -74,10 +74,10 @@ export const T = Tree;
 export const mapT = (tree, f, path = []) => {
     const elemRes = f(tree.elem, tree, path);
     const childrenRes = tree.children.isEntry
-          ? tree.children
-          : tran(tree.children, chs =>
-                 chs.map((ch, i) => mapT(ch, f, path.concat(i)))
-                );
+        ? tree.children
+        : tran(tree.children, chs =>
+              chs.map((ch, i) => mapT(ch, f, path.concat(i)))
+          );
     tree.elem = elemRes;
     tree.children = childrenRes;
     return tree;

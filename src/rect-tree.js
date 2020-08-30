@@ -28,8 +28,10 @@ export const tree = cond(x => x.isTree);
 // Apply function only to the most top-level element of the tree
 export const top = f => tree => Tree(f(tree.elem), tree.children);
 
-export const withTree = (tree, f) =>
-    Tree(f(tree.elem), tree.children);
+export const withTree = (tree, f) => {
+    tree.elem = f(tree.elem);
+    return tree;
+};
 
 export const preserveT = (tree, changes) =>
     withTree(tree, r => preserveR(r, changes));

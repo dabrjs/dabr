@@ -542,10 +542,10 @@ const T = Tree;
 const mapT = (tree, f, path = []) => {
     const elemRes = f(tree.elem, tree, path);
     const childrenRes = tree.children.isEntry
-          ? tree.children
-          : tran(tree.children, chs =>
-                 chs.map((ch, i) => mapT(ch, f, path.concat(i)))
-                );
+        ? tree.children
+        : tran(tree.children, chs =>
+              chs.map((ch, i) => mapT(ch, f, path.concat(i)))
+          );
     tree.elem = elemRes;
     tree.children = childrenRes;
     return tree;
@@ -1282,32 +1282,63 @@ const Supp = def => {
 
 // Changes some Rect properties, preserving the others
 const preserveR = (rect, changes) => {
-    const aux = {};
     iterate(changes, ([name, key]) => {
-        if (rect[name] && isObj(rect[name])) {
-            aux[name] = concatObj(rect[name], key);
+        if (name == 'data') {
+            const arr = singleton(changes.data);
+            //aux.data = rect.data;
+            arr.forEach(({ key, val }) => {
+                if (rect.data.has(key)) {
+                    const current = rect.data.get(key);
+                    rect.data.set(current.concat(key));
+                } else {
+                    rect.data.set(key, [val]);
+                }
+            });
+        } else if (name == 'layout') {
+            rect.layout = concatObj(
+                rect.layout,
+                mapObj(x => (x.isChan ? x : toNode(x)), key)
+            );
+        } else if (rect[name] && isObj(rect[name])) {
+            rect[name] = concatObj(rect[name], key);
         } else {
-            aux[name] = key;
+            rect[name] = key;
         }
     });
-    if (changes.data) {
-        const arr = singleton(changes.data);
-        aux.data = rect.data;
-        arr.forEach(({ key, val }) => {
-            if (aux.data.has(key)) {
-                const current = aux.data.get(key);
-                aux.data.set(current.concat(key));
-            } else {
-                aux.data.set(key, [val]);
-            }
-        });
-    }
-    aux.inst = null; //rect.inst;
-    aux.init = chan(); //rect.init;
-    aux.created = node(); //rect.created;
-    aux.oldVersions = rect.oldVersions.concat([rect]);
-    return Rect(concatObj(rect, aux));
+    //aux.inst = null; //rect.inst;
+    //aux.init = chan(); //rect.init;
+    //aux.created = node(); //rect.created;
+    //aux.oldVersions = rect.oldVersions.concat([rect]);
+    return rect;
 };
+
+// export const preserveR = (rect, changes) => {
+//     const aux = {};
+//     iterate(changes, ([name, key]) => {
+//         if (rect[name] && isObj(rect[name])) {
+//             aux[name] = concatObj(rect[name], key);
+//         } else {
+//             aux[name] = key;
+//         }
+//     });
+//     if (changes.data) {
+//         const arr = singleton(changes.data);
+//         aux.data = rect.data;
+//         arr.forEach(({ key, val }) => {
+//             if (aux.data.has(key)) {
+//                 const current = aux.data.get(key);
+//                 aux.data.set(current.concat(key));
+//             } else {
+//                 aux.data.set(key, [val]);
+//             }
+//         });
+//     }
+//     aux.inst = null; //rect.inst;
+//     aux.init = chan(); //rect.init;
+//     aux.created = node(); //rect.created;
+//     aux.oldVersions = rect.oldVersions.concat([rect]);
+//     return Rect(concatObj(rect, aux));
+// };
 
 // Auxiliar function to define {key, val}, it is really only a
 // more aesthetical way of defining the object (imo)
@@ -1376,8 +1407,10 @@ const tree = cond(x => x.isTree);
 // Apply function only to the most top-level element of the tree
 const top = f => tree => Tree(f(tree.elem), tree.children);
 
-const withTree = (tree, f) =>
-    Tree(f(tree.elem), tree.children);
+const withTree = (tree, f) => {
+    tree.elem = f(tree.elem);
+    return tree;
+};
 
 const preserveT = (tree, changes) =>
     withTree(tree, r => preserveR(r, changes));
@@ -2946,6 +2979,52 @@ const ExternalSiz = children => {
     return Tree(parent, childrenRes);
 };
 
+// export const ExternalPos = children => {
+//     const parent = Rect();
+//     const sizAbs = parent.layout.sizAbs;
+
+//     const positions = new Map();
+//     const sizes = new Map();
+
+//     const repositionChild = child => {
+//         if (child.elem.inst) {
+//             const dom = child.elem.inst.dom;
+//             if (positions.has(dom)) {
+//                 const { top, left } = dom.getBoundingClientRect();
+//                 positions.get(dom).val = asPx([left, top]);
+//             }
+//         }
+//     };
+
+//     const repositionAll = () => {
+//         const posNodes = [];
+//         [...positions].entries(([, nd]) => {
+//             posNodes.push(nd);
+//         });
+//         transaction(posNodes, () => {
+//             children.forEach(repositionChild);
+//         });
+//     };
+
+//     tran(sizAbs, repositionAll);
+
+//     children.forEach(child => {
+//         const rect = child.elem;
+//         preserveR(rect, {
+//             layout: {
+//                 disablePos: true
+//             }
+//         });
+//         rect.withDOM(dom => {
+//             positions.set(dom, rect.layout.pos);
+//             sizes.set(dom, rect.layout.siz);
+//             setTimeout(() => repositionChild(child), 0);
+//         });
+//     });
+
+//     return Tree(parent, children);
+// };
+
 const ExternalPos = children => {
     const parent = Rect();
     const sizAbs = parent.layout.sizAbs;
@@ -2956,8 +3035,10 @@ const ExternalPos = children => {
     const repositionChild = child => {
         if (child.elem.inst) {
             const dom = child.elem.inst.dom;
-            const { top, left } = dom.getBoundingClientRect();
-            positions.get(dom).val = asPx([left, top]);
+            if (positions.has(dom)) {
+                const { top, left } = dom.getBoundingClientRect();
+                positions.get(dom).val = asPx([left, top]);
+            }
         }
     };
 

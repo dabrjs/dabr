@@ -125,6 +125,52 @@ export const ExternalSiz = children => {
     return Tree(parent, childrenRes);
 };
 
+// export const ExternalPos = children => {
+//     const parent = Rect();
+//     const sizAbs = parent.layout.sizAbs;
+
+//     const positions = new Map();
+//     const sizes = new Map();
+
+//     const repositionChild = child => {
+//         if (child.elem.inst) {
+//             const dom = child.elem.inst.dom;
+//             if (positions.has(dom)) {
+//                 const { top, left } = dom.getBoundingClientRect();
+//                 positions.get(dom).val = asPx([left, top]);
+//             }
+//         }
+//     };
+
+//     const repositionAll = () => {
+//         const posNodes = [];
+//         [...positions].entries(([, nd]) => {
+//             posNodes.push(nd);
+//         });
+//         transaction(posNodes, () => {
+//             children.forEach(repositionChild);
+//         });
+//     };
+
+//     tran(sizAbs, repositionAll);
+
+//     children.forEach(child => {
+//         const rect = child.elem;
+//         preserveR(rect, {
+//             layout: {
+//                 disablePos: true
+//             }
+//         });
+//         rect.withDOM(dom => {
+//             positions.set(dom, rect.layout.pos);
+//             sizes.set(dom, rect.layout.siz);
+//             setTimeout(() => repositionChild(child), 0);
+//         });
+//     });
+
+//     return Tree(parent, children);
+// };
+
 export const ExternalPos = children => {
     const parent = Rect();
     const sizAbs = parent.layout.sizAbs;
@@ -135,8 +181,10 @@ export const ExternalPos = children => {
     const repositionChild = child => {
         if (child.elem.inst) {
             const dom = child.elem.inst.dom;
-            const { top, left } = dom.getBoundingClientRect();
-            positions.get(dom).val = asPx([left, top]);
+            if (positions.has(dom)) {
+                const { top, left } = dom.getBoundingClientRect();
+                positions.get(dom).val = asPx([left, top]);
+            }
         }
     };
 

@@ -173,32 +173,63 @@ export const Supp = def => {
 
 // Changes some Rect properties, preserving the others
 export const preserveR = (rect, changes) => {
-    const aux = {};
     iterate(changes, ([name, key]) => {
-        if (rect[name] && isObj(rect[name])) {
-            aux[name] = concatObj(rect[name], key);
+        if (name == 'data') {
+            const arr = singleton(changes.data);
+            //aux.data = rect.data;
+            arr.forEach(({ key, val }) => {
+                if (rect.data.has(key)) {
+                    const current = rect.data.get(key);
+                    rect.data.set(current.concat(key));
+                } else {
+                    rect.data.set(key, [val]);
+                }
+            });
+        } else if (name == 'layout') {
+            rect.layout = concatObj(
+                rect.layout,
+                mapObj(x => (x.isChan ? x : toNode(x)), key)
+            );
+        } else if (rect[name] && isObj(rect[name])) {
+            rect[name] = concatObj(rect[name], key);
         } else {
-            aux[name] = key;
+            rect[name] = key;
         }
     });
-    if (changes.data) {
-        const arr = singleton(changes.data);
-        aux.data = rect.data;
-        arr.forEach(({ key, val }) => {
-            if (aux.data.has(key)) {
-                const current = aux.data.get(key);
-                aux.data.set(current.concat(key));
-            } else {
-                aux.data.set(key, [val]);
-            }
-        });
-    }
-    aux.inst = null; //rect.inst;
-    aux.init = chan(); //rect.init;
-    aux.created = node(); //rect.created;
-    aux.oldVersions = rect.oldVersions.concat([rect]);
-    return Rect(concatObj(rect, aux));
+    //aux.inst = null; //rect.inst;
+    //aux.init = chan(); //rect.init;
+    //aux.created = node(); //rect.created;
+    //aux.oldVersions = rect.oldVersions.concat([rect]);
+    return rect;
 };
+
+// export const preserveR = (rect, changes) => {
+//     const aux = {};
+//     iterate(changes, ([name, key]) => {
+//         if (rect[name] && isObj(rect[name])) {
+//             aux[name] = concatObj(rect[name], key);
+//         } else {
+//             aux[name] = key;
+//         }
+//     });
+//     if (changes.data) {
+//         const arr = singleton(changes.data);
+//         aux.data = rect.data;
+//         arr.forEach(({ key, val }) => {
+//             if (aux.data.has(key)) {
+//                 const current = aux.data.get(key);
+//                 aux.data.set(current.concat(key));
+//             } else {
+//                 aux.data.set(key, [val]);
+//             }
+//         });
+//     }
+//     aux.inst = null; //rect.inst;
+//     aux.init = chan(); //rect.init;
+//     aux.created = node(); //rect.created;
+//     aux.oldVersions = rect.oldVersions.concat([rect]);
+//     return Rect(concatObj(rect, aux));
+// };
 
 // Auxiliar function to define {key, val}, it is really only a
 // more aesthetical way of defining the object (imo)
