@@ -11,7 +11,7 @@ import addStyle from './style/index.js';
 import addChans from './events/index.js';
 import addNodes from './nodes/index.js';
 //import ResizeObserver from '../node_modules/resize-observer-polyfill/src/ResizeObserver.js';
-import ResizeObserver from 'resize-observer-polyfill';
+//import ResizeObserver from 'resize-observer-polyfill';
 import { removeEvents } from './rect.js';
 
 // Initializes Rect: creates DOM, adds layout, nodes, chans and style

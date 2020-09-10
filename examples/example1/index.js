@@ -49,8 +49,8 @@ import {
     Inline,
     toInline,
     Cond
-} from '../dist/dabr.js';
-import { randomColor } from '../src/utils/index.js';
+} from '../../src/index.js';
+import { randomColor } from '../../src/utils/index.js';
 
 const j1 = () =>
     Tree(
@@ -137,11 +137,3 @@ window.gh = gh;
 const styleF = t => mapT(t, x => x);
 
 run(styleF(ggh()));
-
-const o1 = {};
-const o2 = {};
-const o3 = {};
-
-const a1 = [o1];
-const a2 = a1.concat([o2]);
-console.log('??????????', a1[0] == a2[0]);
