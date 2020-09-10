@@ -10,5 +10,7 @@ export * from './rect-tree.js';
 export * from './run.js';
 export * from './layout.js';
 export * from './coord.js';
+export * from './external.js';
+export * from './lib/index.js';
 export { applyF } from './utils/index.js';
 export { addStyle, addChans, addNodes };

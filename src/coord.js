@@ -1,12 +1,10 @@
-import { isNotNull } from './utils/index.js';
-import { mapN } from './node.js';
+import { isNotNull, copyObj } from './utils/index.js';
+import { node, addSubNode } from './node.js';
 
 export const len = (rel, px) => ({
     rel,
     px
 });
-
-//export const rel = r => len(r, 0);
 
 export const px = p => len(0, p);
 
@@ -18,7 +16,7 @@ export const addLen = (r1, r2) => {
 };
 
 export const mulLen = (s, r) => {
-    const aux = r.rel ? r : { px: 0, rel: r };
+    const aux = isNotNull(r.rel) ? r : { px: 0, rel: r };
     return len(aux.rel * s, aux.px * s);
 };
 
@@ -33,37 +31,7 @@ export const getPx = l => (isNotNull(l.px) ? l.px : 0);
 
 export const getRel = l => (isNotNull(l.rel) ? l.rel : l);
 
-const absToRel = (pSizAbs, pMax, px) =>
-    (px * getRel(pMax)) / (pSizAbs - getPx(pMax));
-
-const absToPx = (pSizAbs, pMax, rel) =>
-    (rel * (pSizAbs - getPx(pMax))) / getRel(pMax);
-
-export const lenToRel = (pSizAbs, pMax, l) => {
-    if (isNotNull(l.rel)) {
-        return l.rel + absToRel(pSizAbs, pMax, l.px);
-    } else {
-        return l;
-    }
-};
-
-export const lenToPx = (pSizAbs, pMax, l) => {
-    if (isNotNull(l.rel)) {
-        return l.px + absToPx(pSizAbs, pMax, l.rel);
-    } else {
-        return absToPx(pSizAbs, pMax, l);
-    }
-};
-
-export const coordToRel = ([psX, psY], [pmX, pmY], [cX, cY]) => [
-    lenToRel(psX, pmX, cX),
-    lenToRel(psY, pmY, cY)
-];
-
-export const coordToPx = ([psX, psY], [pmX, pmY], [cX, cY]) => [
-    lenToPx(psX, pmX, cX),
-    lenToPx(psY, pmY, cY)
-];
+export const toLen = l => len(getRel(l), getPx(l));
 
 export const splitCoord = ([x, y]) => [
     [getRel(x), getRel(y)],
@@ -71,3 +39,20 @@ export const splitCoord = ([x, y]) => [
 ];
 
 export const asPx = ([x, y]) => [px(x), px(y)];
+
+export const copyCoord = ([x, y]) => [copyLen(x), copyLen(y)];
+
+export const copyLen = l => (l.rel ? copyObj(l) : l);
+
+export const x = l => coord([l, 100]);
+
+export const y = l => coord([100, l]);
+
+export const coord = arg => {
+    const nd = arg.isNode ? arg : node(arg);
+    addSubNode(nd, '0');
+    addSubNode(nd, ['x', '0']);
+    addSubNode(nd, '1');
+    addSubNode(nd, ['y', '1']);
+    return nd;
+};

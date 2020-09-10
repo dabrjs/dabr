@@ -20,6 +20,4 @@ export const hashNode = () => {
     return hn;
 };
 
-window.c = hashNode();
-
 //const keypressChannel = chan();
