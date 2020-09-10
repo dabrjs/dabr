@@ -23,7 +23,7 @@ DaBR is an opinionated take on frontend web development. If you like the concept
 
 You can find more examples in the [examples](examples) directory (soon). 
 
-Here is a simple example that shows nodes, transitions and rectangles in action. You can check it completely [examples/example2](here).
+Here is a simple example that shows nodes, transitions and rectangles in action. You can check it completely [here](examples/example2).
 
 ```javascript
 const isPortrait = tran(screenSize(), ([w, h]) => h > w);
@@ -52,7 +52,7 @@ Portrait |  Landscape
 :-------------------------:|:-------------------------:
 ![](./images/portrait.png)  |  ![](./images/landscape.png)
 
-This example creates an `isPortrait` node using the `screenSize` node, available in [lib](lib), to describe whether the smartphone (or desktop) is in *portrait* or *landscape* mode depending on the dimensions of the screen. The `isPortrait` node is then used to dynamically change the `Rect`'s `color` and `text`.
+This example creates an `isPortrait` node using the `screenSize` node, available in [.src/lib](lib), to describe whether the smartphone (or desktop) is in *portrait* or *landscape* mode depending on the dimensions of the screen. The `isPortrait` node is then used to dynamically change the `Rect`'s `color` and `text`.
 
 # Current 
 
@@ -64,12 +64,12 @@ DaBR is in **beta** so breaking changes may happen. An alpha release will probab
 
 Current goals are divided into **milestones**:
 
-- Correctness: development tests and bug fixes
-- Performance: performance tests and changes that improve both memory consumption and script time
-- API: improvements to the API are always important
-- Documentation: improving documentation and adding more examples
-- Code Cleaning: cleaning old code or refactoring for better readability
-- Chore: anything like continuous integration, readme, etc
+- **Correctness:** development tests and bug fixes
+- **Performance:** performance tests and changes that improve both memory consumption and script time
+- **API:** improvements to the API are always important
+- **Documentation:** improving documentation and adding more examples
+- **Code Cleaning:** cleaning old code or refactoring for better readability
+- **Chore:** anything like continuous integration, readme, etc
 
 # How to use it
 
