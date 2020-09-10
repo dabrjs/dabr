@@ -48,11 +48,11 @@ const text = tran(
 run(fitText(text, tree));
 ```
 
+This example creates an `isPortrait` node using the `screenSize` node, available in [.src/lib](lib), to describe whether the smartphone (or desktop) is in *portrait* or *landscape* mode depending on the dimensions of the screen. The `isPortrait` node is then used to dynamically change the `Rect`'s `color` and `text`.
+
 Portrait |  Landscape
 :-------------------------:|:-------------------------:
 ![](./images/portrait.png)  |  ![](./images/landscape.png)
-
-This example creates an `isPortrait` node using the `screenSize` node, available in [.src/lib](lib), to describe whether the smartphone (or desktop) is in *portrait* or *landscape* mode depending on the dimensions of the screen. The `isPortrait` node is then used to dynamically change the `Rect`'s `color` and `text`.
 
 # Current 
 
