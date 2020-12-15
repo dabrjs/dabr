@@ -9,18 +9,7 @@ export const addLayoutTriggers = (layout, elem, rect, parLayout) => {
     const dPos = layout.disablePos;
     const posChanged = layout.posChanged;
     const posAbsRender = layout.enablePosAbs;
-    // rect.tran([pos[0], sca[0]], () => {
-    //     const p = toLen(pos[0].val);
-    //     const a = sca[0].val;
-    //     elem.style.left = `calc(${p.rel * a}% + ${p.px}px)`;
-    // });
-    // rect.tran([pos[1], sca[1]], () => {
-    //     const p = toLen(pos[1].val);
-    //     const a = sca[1].val;
-    //     elem.style.top = `calc(${p.rel * a}% + ${p.px}px)`;
-    // });
 
-    //const pos = coord(layout.pos);
     rect.tran([pos, sca, dPos, posAbsRender], () => {
         if (!posAbsRender.val) {
             if (!dPos.val) {
@@ -65,24 +54,12 @@ export const addLayoutTriggers = (layout, elem, rect, parLayout) => {
             }
         }
     });
-    //rect.renderTrans.add(posT);
-
-    // const siz = coord(layout.siz);
-    // rect.tran([siz[0], sca[0]], () => {
-    //     const s = toLen(siz[0].val);
-    //     const a = sca[0].val;
-    //     elem.style.width = `calc(${s.rel * a}% + ${s.px}px)`;
-    // });
-    // rect.tran([siz[1], sca[1]], () => {
-    //     const s = toLen(siz[1].val);
-    //     const a = sca[1].val;
-    //     elem.style.height = `calc(${s.rel * a}% + ${s.px}px)`;
-    // });
 
     const siz = coord(layout.siz);
     const dSiz = layout.disableSiz;
     const sizChanged = layout.sizChanged;
     const sizAbsRender = layout.enableSizAbs;
+
     rect.tran([siz, sca, dSiz, sizAbsRender], () => {
         if (!sizAbsRender.val) {
             if (!dSiz.val) {
@@ -123,7 +100,6 @@ export const addLayoutTriggers = (layout, elem, rect, parLayout) => {
             }
         }
     });
-    //rect.renderTrans.add(sizT);
 };
 
 // Rect's default layout reactivity updates posAbs and sizAbs whenever
@@ -191,36 +167,32 @@ export const defaultLayoutReactivity = (
             ];
             posAbsN.val = vectorPlus(posAbs, posPx);
             if (enPos.val) {
-                if (!dPos.val) {
-                    if (dPos.val == 'x') {
-                        rect.inst.dom.style.left =
-                            posAbsN.val[0] - pPosAbs[0] + 'px';
-                    } else if (dPos.val == 'y') {
-                        rect.inst.dom.style.top =
-                            posAbsN.val[1] - pPosAbs[1] + 'px';
-                    } else {
-                        rect.inst.dom.style.left =
-                            posAbsN.val[0] - pPosAbs[0] + 'px';
-                        rect.inst.dom.style.top =
-                            posAbsN.val[1] - pPosAbs[1] + 'px';
-                    }
+                if (dPos.val == 'x') {
+                    rect.inst.dom.style.top =
+                        posAbsN.val[1] - pPosAbs[1] + 'px';
+                } else if (dPos.val == 'y') {
+                    rect.inst.dom.style.left =
+                        posAbsN.val[0] - pPosAbs[0] + 'px';
+                } else if (dPos.val == false) {
+                    rect.inst.dom.style.left =
+                        posAbsN.val[0] - pPosAbs[0] + 'px';
+                    rect.inst.dom.style.top =
+                        posAbsN.val[1] - pPosAbs[1] + 'px';
                 }
             }
             sizAbsN.val = vectorPlus(sizAbs, sizPx);
             if (enSiz.val) {
-                if (!dSiz.val) {
-                    if (dSiz.val == 'x') {
-                        rect.inst.dom.style.width =
-                            sizAbsN.val[0] + 'px';
-                    } else if (dSiz.val == 'y') {
-                        rect.inst.dom.style.height =
-                            sizAbsN.val[1] + 'px';
-                    } else {
-                        rect.inst.dom.style.width =
-                            sizAbsN.val[0] + 'px';
-                        rect.inst.dom.style.height =
-                            sizAbsN.val[1] + 'px';
-                    }
+                if (dSiz.val == 'x') {
+                    rect.inst.dom.style.height =
+                        sizAbsN.val[1] + 'px';
+                } else if (dSiz.val == 'y') {
+                    rect.inst.dom.style.width =
+                        sizAbsN.val[0] + 'px';
+                } else if (dSiz.val == false) {
+                    rect.inst.dom.style.width =
+                        sizAbsN.val[0] + 'px';
+                    rect.inst.dom.style.height =
+                        sizAbsN.val[1] + 'px';
                 }
             }
             rect.layout.posAbsChanged.put = true;

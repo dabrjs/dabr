@@ -1423,18 +1423,7 @@ const addLayoutTriggers = (layout, elem, rect, parLayout) => {
     const dPos = layout.disablePos;
     const posChanged = layout.posChanged;
     const posAbsRender = layout.enablePosAbs;
-    // rect.tran([pos[0], sca[0]], () => {
-    //     const p = toLen(pos[0].val);
-    //     const a = sca[0].val;
-    //     elem.style.left = `calc(${p.rel * a}% + ${p.px}px)`;
-    // });
-    // rect.tran([pos[1], sca[1]], () => {
-    //     const p = toLen(pos[1].val);
-    //     const a = sca[1].val;
-    //     elem.style.top = `calc(${p.rel * a}% + ${p.px}px)`;
-    // });
 
-    //const pos = coord(layout.pos);
     rect.tran([pos, sca, dPos, posAbsRender], () => {
         if (!posAbsRender.val) {
             if (!dPos.val) {
@@ -1479,24 +1468,12 @@ const addLayoutTriggers = (layout, elem, rect, parLayout) => {
             }
         }
     });
-    //rect.renderTrans.add(posT);
-
-    // const siz = coord(layout.siz);
-    // rect.tran([siz[0], sca[0]], () => {
-    //     const s = toLen(siz[0].val);
-    //     const a = sca[0].val;
-    //     elem.style.width = `calc(${s.rel * a}% + ${s.px}px)`;
-    // });
-    // rect.tran([siz[1], sca[1]], () => {
-    //     const s = toLen(siz[1].val);
-    //     const a = sca[1].val;
-    //     elem.style.height = `calc(${s.rel * a}% + ${s.px}px)`;
-    // });
 
     const siz = coord(layout.siz);
     const dSiz = layout.disableSiz;
     const sizChanged = layout.sizChanged;
     const sizAbsRender = layout.enableSizAbs;
+
     rect.tran([siz, sca, dSiz, sizAbsRender], () => {
         if (!sizAbsRender.val) {
             if (!dSiz.val) {
@@ -1537,7 +1514,6 @@ const addLayoutTriggers = (layout, elem, rect, parLayout) => {
             }
         }
     });
-    //rect.renderTrans.add(sizT);
 };
 
 // Rect's default layout reactivity updates posAbs and sizAbs whenever
@@ -1605,36 +1581,32 @@ const defaultLayoutReactivity = (
             ];
             posAbsN.val = vectorPlus(posAbs, posPx);
             if (enPos.val) {
-                if (!dPos.val) {
-                    if (dPos.val == 'x') {
-                        rect.inst.dom.style.left =
-                            posAbsN.val[0] - pPosAbs[0] + 'px';
-                    } else if (dPos.val == 'y') {
-                        rect.inst.dom.style.top =
-                            posAbsN.val[1] - pPosAbs[1] + 'px';
-                    } else {
-                        rect.inst.dom.style.left =
-                            posAbsN.val[0] - pPosAbs[0] + 'px';
-                        rect.inst.dom.style.top =
-                            posAbsN.val[1] - pPosAbs[1] + 'px';
-                    }
+                if (dPos.val == 'x') {
+                    rect.inst.dom.style.top =
+                        posAbsN.val[1] - pPosAbs[1] + 'px';
+                } else if (dPos.val == 'y') {
+                    rect.inst.dom.style.left =
+                        posAbsN.val[0] - pPosAbs[0] + 'px';
+                } else if (dPos.val == false) {
+                    rect.inst.dom.style.left =
+                        posAbsN.val[0] - pPosAbs[0] + 'px';
+                    rect.inst.dom.style.top =
+                        posAbsN.val[1] - pPosAbs[1] + 'px';
                 }
             }
             sizAbsN.val = vectorPlus(sizAbs, sizPx);
             if (enSiz.val) {
-                if (!dSiz.val) {
-                    if (dSiz.val == 'x') {
-                        rect.inst.dom.style.width =
-                            sizAbsN.val[0] + 'px';
-                    } else if (dSiz.val == 'y') {
-                        rect.inst.dom.style.height =
-                            sizAbsN.val[1] + 'px';
-                    } else {
-                        rect.inst.dom.style.width =
-                            sizAbsN.val[0] + 'px';
-                        rect.inst.dom.style.height =
-                            sizAbsN.val[1] + 'px';
-                    }
+                if (dSiz.val == 'x') {
+                    rect.inst.dom.style.height =
+                        sizAbsN.val[1] + 'px';
+                } else if (dSiz.val == 'y') {
+                    rect.inst.dom.style.width =
+                        sizAbsN.val[0] + 'px';
+                } else if (dSiz.val == false) {
+                    rect.inst.dom.style.width =
+                        sizAbsN.val[0] + 'px';
+                    rect.inst.dom.style.height =
+                        sizAbsN.val[1] + 'px';
                 }
             }
             rect.layout.posAbsChanged.put = true;
@@ -3251,3 +3223,4 @@ const screenSize = () => {
 };
 
 export { Cond, EXPONENTIAL, Entry, External, ExternalPos, ExternalSiz, FLIP, Img, Inline, LINEAR, QUADRATIC, Rect, RectT, Supp, SuppT, T, Text, Tree, _border, _container, _externalBorder, _mapT, _pathT, _proportional, _seamlessBorder, _style, _walkT, addChans, addCoord, addLayoutTriggers, addLen, addNodes, addStyle, addSubNode, applyF, asPx, border, chan, cond, condElse, container, coord, copyCoord, copyLen, core, defaultLayoutReactivity, endTransaction, externalBorder, fitImg, fitText, flex, flexX, flexY, fromStruc, getPx, getRel, hashNode, horizontal, horizontalSpace, keyed, len, line, listen, listenOnce, listenRef, mapT, mulCoord, mulLen, node, nodeObj, paragraph, pathT, preserveR, preserveT, proportional, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, screenSize, scrollbar, seamlessBorder, space, splitCoord, startTransaction, stopTimed, style, subNode, subNode1, supp, timed, toInline, toLen, toNode, toStruc, top, tran, tranRef, transaction, tree, unsafeTran, unsafeTranRef, vertical, verticalSpace, walkT, withTree, x, y };
+
