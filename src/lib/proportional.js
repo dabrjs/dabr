@@ -25,6 +25,9 @@ export const proportional = (prop, tree) => {
         layout: {
             pos: innerPos,
             siz: innerSiz
+        },
+        css: {
+            overflow: 'hidden'
         }
     });
     tran([prop, sizAbs], () => {

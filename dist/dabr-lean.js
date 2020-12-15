@@ -1856,6 +1856,9 @@ const proportional = (prop, tree) => {
         layout: {
             pos: innerPos,
             siz: innerSiz
+        },
+        css: {
+            overflow: 'hidden'
         }
     });
     tran([prop, sizAbs], () => {
@@ -2167,6 +2170,111 @@ const border = (b, tree) => {
 
 const _border = b => tree => border(b, tree);
 
+const externalBorder = (b, tree) => {
+    const rect = tree.elem;
+    const innerPos = node();
+    const innerSiz = node();
+    const color = tran(b, ({ color }) => color);
+    const width = tran(b, ({ width }) => width);
+
+    const outterPos = tran(width, rect.layout.pos, (w, p) =>
+        addCoord(p, [px(-w), px(-w)])
+    );
+    const outterSiz = tran(width, rect.layout.siz, (w, s) =>
+        addCoord(s, [px(2 * w), px(2 * w)])
+    );
+
+    const s = Supp({
+        layout: {
+            pos: outterPos,
+            siz: outterSiz
+        },
+        data: keyed(border, {
+            node: b,
+            outter: true,
+            inner: false
+        }),
+        style: {
+            color: color
+        }
+    });
+    return Tree(
+        s,
+        Tree(
+            preserveR(rect, {
+                layout: {
+                    pos: tran(width, w => [px(w), px(w)]),
+                    siz: tran(width, w => [
+                        len(100, -2 * w),
+                        len(100, -2 * w)
+                    ])
+                },
+                data: keyed(border, {
+                    node: b,
+                    inner: true,
+                    outter: false
+                })
+            }),
+            tree.children
+        )
+    );
+};
+
+const _externalBorder = b => tree => externalBorder(b, tree);
+
+const seamlessBorder = (b, tree) => {
+    const rect = tree.elem;
+    const color = tran(b, ({ color }) => color);
+    const width = tran(b, ({ width }) => width);
+
+    const outterPos = tran(width, rect.layout.pos, (w, p) =>
+        addCoord(p, [px(-w / 2), px(-w / 2)])
+    );
+    const outterSiz = tran(width, rect.layout.siz, (w, s) =>
+        addCoord(s, [px(w), px(w)])
+    );
+
+    const innerPos = tran(width, w => [px(w), px(w)]);
+    const innerSiz = tran(width, w => [
+        len(100, -2 * w),
+        len(100, -2 * w)
+    ]);
+
+    const s = Supp({
+        layout: {
+            pos: outterPos,
+            siz: outterSiz
+        },
+        data: keyed(border, {
+            node: b,
+            outter: true,
+            inner: false
+        }),
+        style: {
+            color: color
+        }
+    });
+    return Tree(
+        s,
+        Tree(
+            preserveR(rect, {
+                layout: {
+                    pos: innerPos,
+                    siz: innerSiz
+                },
+                data: keyed(border, {
+                    node: b,
+                    inner: true,
+                    outter: false
+                })
+            }),
+            tree.children
+        )
+    );
+};
+
+const _seamlessBorder = b => tree => seamlessBorder(b, tree);
+
 const container = (show, tree) =>
     Tree(
         Supp({
@@ -2192,47 +2300,47 @@ const container = (show, tree) =>
 
 const _container = show => tree => container(show, tree);
 
-const switcher = (route, routeRectMap) => {
-    const children = node();
-    const routeMap = mapValuesObj(routeRectMap, val => {
-        const destroy = val.destroy ? val.destroy : false;
-        const show = node(false);
-        const rectT = container(show, val.content || val);
-        return {
-            show,
-            rectT,
-            destroy
-        };
-    });
-    const siz = node([100, 100]);
-    tran([route], () => {
-        const newRoute = route.val;
-        children.val = iterate(routeMap, ([rou, val]) => {
-            const { show, rectT, destroy } = val;
-            if (rou == newRoute) {
-                show.val = true;
-                return rectT;
-            } else if (destroy) {
-                return null;
-            } else {
-                show.val = false;
-                return rectT;
-            }
-        }).filter(isNotNull);
-        // hack to fiz some problems when switch happens
-        siz.val = [{ rel: 100, px: 0.01 }, 100];
-        siz.val = [100, 100];
-    });
-    return Tree(
-        Supp({
-            layout: {
-                pos: [0, 0],
-                siz
-            }
-        }),
-        children
-    );
-};
+// export const switcher = (route, routeRectMap) => {
+//     const children = node();
+//     const routeMap = mapValuesObj(routeRectMap, val => {
+//         const destroy = val.destroy ? val.destroy : false;
+//         const show = node(false);
+//         const rectT = container(show, val.content || val);
+//         return {
+//             show,
+//             rectT,
+//             destroy
+//         };
+//     });
+//     const siz = node([100, 100]);
+//     tran([route], () => {
+//         const newRoute = route.val;
+//         children.val = iterate(routeMap, ([rou, val]) => {
+//             const { show, rectT, destroy } = val;
+//             if (rou == newRoute) {
+//                 show.val = true;
+//                 return rectT;
+//             } else if (destroy) {
+//                 return null;
+//             } else {
+//                 show.val = false;
+//                 return rectT;
+//             }
+//         }).filter(isNotNull);
+//         // hack to fiz some problems when switch happens
+//         siz.val = [{ rel: 100, px: 0.01 }, 100];
+//         siz.val = [100, 100];
+//     });
+//     return Tree(
+//         Supp({
+//             layout: {
+//                 pos: [0, 0],
+//                 siz
+//             }
+//         }),
+//         children
+//     );
+// };
 
 const Cond = (route, routeRectMap) => {
     const children = node([]);
@@ -3114,4 +3222,4 @@ const screenSize = () => {
     return res;
 };
 
-export { Cond, EXPONENTIAL, Entry, External, ExternalPos, ExternalSiz, FLIP, Img, Inline, LINEAR, QUADRATIC, Rect, RectT, Supp, SuppT, T, Text, Tree, _border, _container, _mapT, _pathT, _proportional, _style, _walkT, addChans, addCoord, addLayoutTriggers, addLen, addNodes, addStyle, addSubNode, applyF, asPx, border, chan, cond, condElse, container, coord, copyCoord, copyLen, core, defaultLayoutReactivity, endTransaction, fitImg, fitText, flex, flexX, flexY, fromStruc, getPx, getRel, hashNode, horizontal, horizontalSpace, keyed, len, line, listen, listenOnce, listenRef, mapT, mulCoord, mulLen, node, nodeObj, paragraph, pathT, preserveR, preserveT, proportional, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, screenSize, scrollbar, space, splitCoord, startTransaction, stopTimed, style, subNode, subNode1, supp, switcher, timed, toInline, toLen, toNode, toStruc, top, tran, tranRef, transaction, tree, unsafeTran, unsafeTranRef, vertical, verticalSpace, walkT, withTree, x, y };
+export { Cond, EXPONENTIAL, Entry, External, ExternalPos, ExternalSiz, FLIP, Img, Inline, LINEAR, QUADRATIC, Rect, RectT, Supp, SuppT, T, Text, Tree, _border, _container, _externalBorder, _mapT, _pathT, _proportional, _seamlessBorder, _style, _walkT, addChans, addCoord, addLayoutTriggers, addLen, addNodes, addStyle, addSubNode, applyF, asPx, border, chan, cond, condElse, container, coord, copyCoord, copyLen, core, defaultLayoutReactivity, endTransaction, externalBorder, fitImg, fitText, flex, flexX, flexY, fromStruc, getPx, getRel, hashNode, horizontal, horizontalSpace, keyed, len, line, listen, listenOnce, listenRef, mapT, mulCoord, mulLen, node, nodeObj, paragraph, pathT, preserveR, preserveT, proportional, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, screenSize, scrollbar, seamlessBorder, space, splitCoord, startTransaction, stopTimed, style, subNode, subNode1, supp, timed, toInline, toLen, toNode, toStruc, top, tran, tranRef, transaction, tree, unsafeTran, unsafeTranRef, vertical, verticalSpace, walkT, withTree, x, y };

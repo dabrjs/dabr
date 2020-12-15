@@ -18,7 +18,6 @@ import {
     fromStruc,
     _container,
     _proportional,
-    switcher,
     pathT,
     chan,
     listen,
@@ -48,7 +47,8 @@ import {
     withTree,
     Inline,
     toInline,
-    Cond
+    Cond,
+    seamlessBorder
 } from '../../src/index.js';
 import { randomColor } from '../../src/utils/index.js';
 
@@ -134,6 +134,8 @@ window.gh = gh;
 //window.th = node('Heyyyyy');
 //const hg = fitText2(window.th, Tree(Rect()));
 
-const styleF = t => mapT(t, x => x);
+const b = node({ width: 1, color: 'black' });
+
+const styleF = t => walkT(t, x => x);
 
 run(styleF(ggh()));
