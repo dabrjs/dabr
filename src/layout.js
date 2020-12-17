@@ -186,11 +186,9 @@ export const defaultLayoutReactivity = (
                     rect.inst.dom.style.height =
                         sizAbsN.val[1] + 'px';
                 } else if (dSiz.val == 'y') {
-                    rect.inst.dom.style.width =
-                        sizAbsN.val[0] + 'px';
+                    rect.inst.dom.style.width = sizAbsN.val[0] + 'px';
                 } else if (dSiz.val == false) {
-                    rect.inst.dom.style.width =
-                        sizAbsN.val[0] + 'px';
+                    rect.inst.dom.style.width = sizAbsN.val[0] + 'px';
                     rect.inst.dom.style.height =
                         sizAbsN.val[1] + 'px';
                 }

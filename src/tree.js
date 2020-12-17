@@ -51,21 +51,37 @@ export const Tree = (elem, ...childrens) => {
             return node([]);
         }
     });
+    const baseChildren =
+        childrensN.length == 0
+            ? node([])
+            : childrensN.length == 1
+            ? childrensN[0]
+            : tran(childrensN, () =>
+                  childrensN
+                      .map(ch => ch.val)
+                      .reduce((x, y) => x.concat(y))
+              );
     return {
         isTree: true,
         elem: elem,
-        children:
-            childrensN.length == 0
-                ? node([])
-                : childrensN.length == 1
-                ? childrensN[0]
-                : tran(childrensN, () =>
-                      childrensN
-                          .map(ch => ch.val)
-                          .reduce((x, y) => x.concat(y))
-                  )
+        base: baseChildren,
+        children: baseChildren
     };
 };
+
+export const Treeb = (elem, base, children) => ({
+    isTree: true,
+    elem: elem,
+    base: base,
+    children: children
+});
+
+export const Treef = (elem, base, f) => ({
+    isTree: true,
+    elem: elem,
+    base: base,
+    children: tran(base, f)
+});
 
 // Shorthand only
 export const T = Tree;
@@ -121,7 +137,7 @@ const substChildrenByEntry = (tree, ref) => {
             chs.map(ch => substChildrenByEntry(ch, ref))
         );
     }
-    return Tree(tree.elem, children);
+    return Treeb(tree.elem, tree.base, children);
 };
 
 // (Tree a -> Tree b) -> Tree a -> Tree b
@@ -154,7 +170,8 @@ export const pathT = (tree, path) => {
 };
 export const _pathT = path => tree => pathT(tree, path);
 
-export const toStruc = tree => mapT(tree, x => Tree(x, Entry));
+export const toStruc = tree =>
+    mapT(tree, (x, t) => Treeb(x, t.base, Entry));
 
 // Flattens a Tree of Trees using the Entry special object as an
 // indicator of how to flatten the trees. Really useful for all sorts

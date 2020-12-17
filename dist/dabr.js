@@ -519,21 +519,37 @@ const Tree = (elem, ...childrens) => {
             return node([]);
         }
     });
+    const baseChildren =
+        childrensN.length == 0
+            ? node([])
+            : childrensN.length == 1
+            ? childrensN[0]
+            : tran(childrensN, () =>
+                  childrensN
+                      .map(ch => ch.val)
+                      .reduce((x, y) => x.concat(y))
+              );
     return {
         isTree: true,
         elem: elem,
-        children:
-            childrensN.length == 0
-                ? node([])
-                : childrensN.length == 1
-                ? childrensN[0]
-                : tran(childrensN, () =>
-                      childrensN
-                          .map(ch => ch.val)
-                          .reduce((x, y) => x.concat(y))
-                  )
+        base: baseChildren,
+        children: baseChildren
     };
 };
+
+const Treeb = (elem, base, children) => ({
+    isTree: true,
+    elem: elem,
+    base: base,
+    children: children
+});
+
+const Treef = (elem, base, f) => ({
+    isTree: true,
+    elem: elem,
+    base: base,
+    children: tran(base, f)
+});
 
 // Shorthand only
 const T = Tree;
@@ -589,7 +605,7 @@ const substChildrenByEntry = (tree, ref) => {
             chs.map(ch => substChildrenByEntry(ch, ref))
         );
     }
-    return Tree(tree.elem, children);
+    return Treeb(tree.elem, tree.base, children);
 };
 
 // (Tree a -> Tree b) -> Tree a -> Tree b
@@ -622,7 +638,8 @@ const pathT = (tree, path) => {
 };
 const _pathT = path => tree => pathT(tree, path);
 
-const toStruc = tree => mapT(tree, x => Tree(x, Entry));
+const toStruc = tree =>
+    mapT(tree, (x, t) => Treeb(x, t.base, Entry));
 
 // Flattens a Tree of Trees using the Entry special object as an
 // indicator of how to flatten the trees. Really useful for all sorts
@@ -1600,11 +1617,9 @@ const defaultLayoutReactivity = (
                     rect.inst.dom.style.height =
                         sizAbsN.val[1] + 'px';
                 } else if (dSiz.val == 'y') {
-                    rect.inst.dom.style.width =
-                        sizAbsN.val[0] + 'px';
+                    rect.inst.dom.style.width = sizAbsN.val[0] + 'px';
                 } else if (dSiz.val == false) {
-                    rect.inst.dom.style.width =
-                        sizAbsN.val[0] + 'px';
+                    rect.inst.dom.style.width = sizAbsN.val[0] + 'px';
                     rect.inst.dom.style.height =
                         sizAbsN.val[1] + 'px';
                 }
@@ -1759,23 +1774,39 @@ const runInside = (rectT, parent) => {
     rect.created.val = true;
     // Adds trigger for children creation/removal (remember children
     // are actually nodes, so they can be changed dynamically)
-    addChildrenTrigger(rectT.children, rect);
+    addChildrenTrigger(rectT.base, rectT.children, rect);
 
     return rectT;
 };
 
 // If a child is dynamically removed/added from the children node's
 // array its DOM element is removed/created.
-const addChildrenTrigger = (children, parent) => {
-    parent.tran(children, () => {
-        let neu = children.val;
-        let alt = children.old;
-        if (!alt) alt = [];
-        if (!neu) neu = [];
-        const removed = alt.filter(x => !neu.includes(x));
-        const created = neu.filter(x => !alt.includes(x));
-        created.forEach(x => runInside(x, parent));
-        removed.forEach(x => removeRect(x));
+const addChildrenTrigger = (base, children, parent) => {
+    parent.tran(base, children, () => {
+        let bneu = base.val;
+        let balt = base.old;
+        if (!balt) balt = [];
+        if (!bneu) bneu = [];
+
+        let cneu = children.val;
+        let calt = children.old;
+
+        //const removed = alt.filter(x => !neu.includes(x));
+        //const created = neu.filter(x => !alt.includes(x))
+        const removed = balt
+            .map((x, i) => (!bneu.includes(x) ? i : null))
+            .filter(isNotNull);
+        const created = bneu
+            .map((x, i) => (!balt.includes(x) ? i : null))
+            .filter(isNotNull);
+
+        created.forEach(i => {
+            runInside(cneu[i], parent);
+        });
+
+        removed.forEach(i => {
+            removeRect(calt[i]);
+        });
     });
 };
 
@@ -3222,4 +3253,4 @@ const screenSize = () => {
     return res;
 };
 
-export { Cond, EXPONENTIAL, Entry, External, ExternalPos, ExternalSiz, FLIP, Img, Inline, LINEAR, QUADRATIC, Rect, RectT, Supp, SuppT, T, Text, Tree, _border, _container, _externalBorder, _mapT, _pathT, _proportional, _seamlessBorder, _style, _walkT, addChans, addCoord, addLayoutTriggers, addLen, addNodes, addStyle, addSubNode, applyF, asPx, border, chan, cond, condElse, container, coord, copyCoord, copyLen, core, defaultLayoutReactivity, endTransaction, externalBorder, fitImg, fitText, flex, flexX, flexY, fromStruc, getPx, getRel, hashNode, horizontal, horizontalSpace, keyed, len, line, listen, listenOnce, listenRef, mapT, mulCoord, mulLen, node, nodeObj, paragraph, pathT, preserveR, preserveT, proportional, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, screenSize, scrollbar, seamlessBorder, space, splitCoord, startTransaction, stopTimed, style, subNode, subNode1, supp, timed, toInline, toLen, toNode, toStruc, top, tran, tranRef, transaction, tree, unsafeTran, unsafeTranRef, vertical, verticalSpace, walkT, withTree, x, y };
+export { Cond, EXPONENTIAL, Entry, External, ExternalPos, ExternalSiz, FLIP, Img, Inline, LINEAR, QUADRATIC, Rect, RectT, Supp, SuppT, T, Text, Tree, Treeb, Treef, _border, _container, _externalBorder, _mapT, _pathT, _proportional, _seamlessBorder, _style, _walkT, addChans, addCoord, addLayoutTriggers, addLen, addNodes, addStyle, addSubNode, applyF, asPx, border, chan, cond, condElse, container, coord, copyCoord, copyLen, core, defaultLayoutReactivity, endTransaction, externalBorder, fitImg, fitText, flex, flexX, flexY, fromStruc, getPx, getRel, hashNode, horizontal, horizontalSpace, keyed, len, line, listen, listenOnce, listenRef, mapT, mulCoord, mulLen, node, nodeObj, paragraph, pathT, preserveR, preserveT, proportional, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, screenSize, scrollbar, seamlessBorder, space, splitCoord, startTransaction, stopTimed, style, subNode, subNode1, supp, timed, toInline, toLen, toNode, toStruc, top, tran, tranRef, transaction, tree, unsafeTran, unsafeTranRef, vertical, verticalSpace, walkT, withTree, x, y };

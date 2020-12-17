@@ -1,3 +1,4 @@
+import { isNotNull } from './utils/index.js';
 import { node, removeTran } from './node.js';
 import { removeListen } from './channel.js';
 import {
@@ -158,23 +159,39 @@ const runInside = (rectT, parent) => {
     rect.created.val = true;
     // Adds trigger for children creation/removal (remember children
     // are actually nodes, so they can be changed dynamically)
-    addChildrenTrigger(rectT.children, rect);
+    addChildrenTrigger(rectT.base, rectT.children, rect);
 
     return rectT;
 };
 
 // If a child is dynamically removed/added from the children node's
 // array its DOM element is removed/created.
-const addChildrenTrigger = (children, parent) => {
-    parent.tran(children, () => {
-        let neu = children.val;
-        let alt = children.old;
-        if (!alt) alt = [];
-        if (!neu) neu = [];
-        const removed = alt.filter(x => !neu.includes(x));
-        const created = neu.filter(x => !alt.includes(x));
-        created.forEach(x => runInside(x, parent));
-        removed.forEach(x => removeRect(x));
+const addChildrenTrigger = (base, children, parent) => {
+    parent.tran(base, children, () => {
+        let bneu = base.val;
+        let balt = base.old;
+        if (!balt) balt = [];
+        if (!bneu) bneu = [];
+
+        let cneu = children.val;
+        let calt = children.old;
+
+        //const removed = alt.filter(x => !neu.includes(x));
+        //const created = neu.filter(x => !alt.includes(x))
+        const removed = balt
+            .map((x, i) => (!bneu.includes(x) ? i : null))
+            .filter(isNotNull);
+        const created = bneu
+            .map((x, i) => (!balt.includes(x) ? i : null))
+            .filter(isNotNull);
+
+        created.forEach(i => {
+            runInside(cneu[i], parent);
+        });
+
+        removed.forEach(i => {
+            removeRect(calt[i]);
+        });
     });
 };
 
