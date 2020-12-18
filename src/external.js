@@ -216,7 +216,8 @@ export const ExternalPos = children => {
             setTimeout(() => repositionChild(child), 0);
         });
 
-        return Tree(externalRect, child.children);
+        child.elem = externalRect;
+        return child;
     });
 
     return Tree(parent, childrenRes);

@@ -22,7 +22,12 @@ export const node = (val = null, info = new WeakMap()) =>
         delayedChanges: null
     });
 
-const mkNode = target => new Proxy(target, { set, get });
+
+const mkNode = target => {
+    const revocable = Proxy.revocable(target, { set, get });
+    target.revoke = revocable.revoke;
+    return revocable.proxy;
+};
 
 // Property 'target' can be used to retrieve the raw node object
 const get = (target, prop) =>

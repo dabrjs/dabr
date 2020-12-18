@@ -139,5 +139,8 @@ export const flexY = tree => {
         )
     );
 
-    return Tree(res, resChildren);
+    tree.elem = res;
+    tree.children = resChildren;
+    return tree;
+    //return Tree(res, resChildren);
 };

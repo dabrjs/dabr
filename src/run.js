@@ -1,4 +1,4 @@
-import { isNotNull } from './utils/index.js';
+import { isNotNull, isNull } from './utils/index.js';
 import { node, removeTran } from './node.js';
 import { removeListen } from './channel.js';
 import {
@@ -120,18 +120,41 @@ export const runRectDOM = (rectT, dom) => {
 const runInside = (rectT, parent) => {
     const rect = rectT.elem;
 
-    addGlobalCSSOnce();
-    const elem = document.createElement(rect.tag);
-    addDabrCss(elem);
-    parent.inst.dom.appendChild(elem);
+    const isNotCreated = isNull(rect.inst);
 
-    rect.inst = {
-        dom: elem,
-        par: parent
-    };
+    if (isNotCreated) {
+
+        addGlobalCSSOnce();
+        const elem = document.createElement(rect.tag);
+        addDabrCss(elem);
+        parent.inst.dom.appendChild(elem);
+
+        rect.inst = {
+            dom: elem,
+            par: parent
+        };
+        
+    } else {
+        rect.recreated = true;
+
+        //console.log(parent.inst.dom);
+        //console.log(rect.inst.dom);
+
+        parent.inst.dom.appendChild(rect.inst.dom);
+        rect.inst.par = parent;
+
+        rect.transitions.forEach(t => {
+            removeTran(t);
+        });
+        rect.listeners.forEach(l => {
+            removeListen(l);
+        });
+        removeEvents(rect);
+    }
+
     const lay = rect.layout;
     // Binds rect parameters to actual CSS properties
-    addLayoutTriggers(lay, elem, rect, parent.layout);
+    addLayoutTriggers(lay, rect.inst.dom, rect, parent.layout);
     // Adds (default) resize reactivity to the rect
     defaultLayoutReactivity(
         rect,
@@ -147,51 +170,71 @@ const runInside = (rectT, parent) => {
         lay.disablePos,
         lay.disableSiz
     );
-    // Trigger events for oldVersions as well. This way functions
-    // working with olderVersions of rects (before preserveR's) get
-    // the correct value of inst as well
-    rect.oldVersions.forEach(oldVersion => {
-        oldVersion.inst = rect.inst;
-        oldVersion.init.put = true;
-        oldVersion.created.val = true;
-    });
-    rect.init.put = true;
-    rect.created.val = true;
-    // Adds trigger for children creation/removal (remember children
-    // are actually nodes, so they can be changed dynamically)
-    addChildrenTrigger(rectT.base, rectT.children, rect);
+
+    if (isNotCreated) {
+        // Trigger events for oldVersions as well. This way functions
+        // working with olderVersions of rects (before preserveR's) get
+        // the correct value of inst as well
+        rect.oldVersions.forEach(oldVersion => {
+            oldVersion.inst = rect.inst;
+            oldVersion.init.put = true;
+            oldVersion.created.val = true;
+        });
+        rect.init.put = true;
+        rect.created.val = true;
+        // Adds trigger for children creation/removal (remember children
+        // are actually nodes, so they can be changed dynamically)
+    }
+
+    addChildrenTrigger(rectT.children, rect);
 
     return rectT;
 };
 
 // If a child is dynamically removed/added from the children node's
 // array its DOM element is removed/created.
-const addChildrenTrigger = (base, children, parent) => {
-    parent.tran(base, children, () => {
-        let bneu = base.val;
-        let balt = base.old;
-        if (!balt) balt = [];
-        if (!bneu) bneu = [];
+const addChildrenTrigger = (children, parent) => {
+    parent.tran(children, () => {
+        // let bneu = base.val;
+        // let balt = base.old;
+        // if (!balt) balt = [];
+        // if (!bneu) bneu = [];
+        // let cneu = children.val;
+        // let calt = children.old;
 
-        let cneu = children.val;
-        let calt = children.old;
+        let neu = children.val;
+        let alt = children.old;
+        if (!alt) alt = [];
+        if (!neu) neu = [];
 
-        //const removed = alt.filter(x => !neu.includes(x));
-        //const created = neu.filter(x => !alt.includes(x))
-        const removed = balt
-            .map((x, i) => (!bneu.includes(x) ? i : null))
-            .filter(isNotNull);
-        const created = bneu
-            .map((x, i) => (!balt.includes(x) ? i : null))
-            .filter(isNotNull);
+        const removed = alt.filter(x => !neu.includes(x));
+        const created = neu.filter(x => !alt.includes(x));
 
-        created.forEach(i => {
-            runInside(cneu[i], parent);
+        // const removed = balt
+        //     .map((x, i) => (!bneu.includes(x) ? i : null))
+        //     .filter(isNotNull);
+        // const created = bneu
+        //     .map((x, i) => (!balt.includes(x) ? i : null))
+        //     .filter(isNotNull);
+
+        // let bneu = base.val;
+        // let balt = base.old;
+        // if (!balt) balt = [];
+        // if (!bneu) bneu = [];
+        // const baseNeu = bneu
+        //     .filter(x => balt.includes(x))
+        //     .map(t => t.elem);
+
+        // console.log('baseney', baseNeu);
+        // console.log('removed', removed);
+        // console.log('created', created);
+
+        created.forEach(x => {
+            runInside(x, parent);
         });
 
-        removed.forEach(i => {
-            removeRect(calt[i]);
-        });
+        removed.map(removeRect);
+        //const hasRecreated =
     });
 };
 
@@ -199,25 +242,32 @@ const addChildrenTrigger = (base, children, parent) => {
 // transitions do not work anymore
 export const removeRect = rectT => {
     const rect = rectT.elem;
-    const dom = rect.inst.dom;
-    // GC removes eventListeners automatically when DOM is removed
-    dom.parentNode.removeChild(dom);
-    // Transitions related to DOM rendering are removed although GC
-    // might be able to do it automatically
-    rect.transitions.forEach(t => {
-        removeTran(t);
-    });
-    rect.listeners.forEach(l => {
-        removeListen(l);
-    });
-    removeEvents(rect);
-    rect.inst = null;
-    rect.stop.put = true;
-    rect.removed.val = true;
-    rect.created.val = false;
-    // recursively removes all children
-    rectT.children.val = rectT.children.val.map(removeRect);
-    return rectT;
+
+    if (!rect.recreated) {
+        const dom = rect.inst.dom;
+        // Transitions related to DOM rendering are removed although GC
+        // might be able to do it automatically
+        rect.transitions.forEach(t => {
+            removeTran(t);
+        });
+        rect.listeners.forEach(l => {
+            removeListen(l);
+        });
+        removeEvents(rect);
+
+        rect.inst = null;
+        rect.stop.put = true;
+        rect.removed.val = true;
+        rect.created.val = false;
+
+        // GC removes eventListeners automatically when DOM is removed
+        dom.parentNode.removeChild(dom);
+
+    }
+
+    rectT.children.val.map(removeRect);
+
+    //rectT = null;
 };
 
 // Some needed global CSS, only put once if not put already
