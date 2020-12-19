@@ -133,7 +133,7 @@ const runInside = (rectT, parent) => {
             dom: elem,
             par: parent
         };
-        
+
     } else {
         rect.recreated = true;
 
