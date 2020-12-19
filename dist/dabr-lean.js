@@ -783,18 +783,20 @@ const copyCoord = ([x, y]) => [copyLen(x), copyLen(y)];
 
 const copyLen = l => (l.rel ? copyObj(l) : l);
 
-const x = l => coord([l, 100]);
+const dontCare = 100;
 
-const y = l => coord([100, l]);
+const x = l => [l, dontCare];
 
-const coord = arg => {
-    const nd = arg.isNode ? arg : node(arg);
-    addSubNode(nd, '0');
-    addSubNode(nd, ['x', '0']);
-    addSubNode(nd, '1');
-    addSubNode(nd, ['y', '1']);
-    return nd;
-};
+const y = l => [dontCare, l];
+
+// export const coord = arg => {
+//     const nd = arg.isNode ? arg : node(arg);
+//     addSubNode(nd, '0');
+//     addSubNode(nd, ['x', '0']);
+//     addSubNode(nd, '1');
+//     addSubNode(nd, ['y', '1']);
+//     return nd;
+// };
 
 const scrollRef = {};
 
@@ -1111,6 +1113,8 @@ const listenOnce = (...args) => {
     return res;
 };
 
+//import { coord } from './coord.js';
+
 // Creates the staindard Rect interface, which is a standard set of
 // attrs transformations/functions can rely on. Doc:
 // isRect: property to check if an object is a rect
@@ -1153,11 +1157,11 @@ const listenOnce = (...args) => {
 //   layout.siz: relative size length. Obligatory in any rect.
 const Rect = (def = {}) => {
     const defaultLayout = {
-        pos: coord([0, 0]),
-        siz: coord([100, 100]),
+        pos: [0, 0],
+        siz: [100, 100],
         posAbs: node(),
         sizAbs: node(),
-        scale: coord([1, 1]),
+        scale: [1, 1],
         disablePos: node(false),
         disableSiz: node(false),
         posChanged: chan(),
@@ -1409,9 +1413,9 @@ const preserveT = (tree, changes) =>
 
 // Add render transitions related to layout (positioning)
 const addLayoutTriggers = (layout, elem, rect, parLayout) => {
-    const sca = coord(parLayout.scale);
+    const sca = parLayout.scale;
 
-    const pos = coord(layout.pos);
+    const pos = layout.pos;
     const dPos = layout.disablePos;
     const posChanged = layout.posChanged;
     const posAbsRender = layout.enablePosAbs;
@@ -1461,7 +1465,7 @@ const addLayoutTriggers = (layout, elem, rect, parLayout) => {
         }
     });
 
-    const siz = coord(layout.siz);
+    const siz = layout.siz;
     const dSiz = layout.disableSiz;
     const sizChanged = layout.sizChanged;
     const sizAbsRender = layout.enableSizAbs;
@@ -1556,9 +1560,7 @@ const defaultLayoutReactivity = (
     // );
 
     rect.tran(
-        [posN, sizN, pScaleN, pPosAbsN, pSizAbsN, enPos, enSiz].map(
-            coord
-        ),
+        [posN, sizN, pScaleN, pPosAbsN, pSizAbsN, enPos, enSiz],
         (pos, siz, pScale, pPosAbs, pSizAbs) => {
             const [posRel, posPx] = splitCoord(pos);
             const [sizRel, sizPx] = splitCoord(siz);
@@ -2919,7 +2921,8 @@ const flexX = tree => {
         const entry = entries[0];
         const { width, height } = entry.contentRect;
         if (width != 0 && height != 0) {
-            res.layout.siz[0].val = px(width);
+            //res.layout.siz[0].val = px(width);
+            res.layout.siz.change(([w,h]) => [px(width),h]);
         }
     });
 
@@ -2963,7 +2966,8 @@ const flexY = tree => {
         const entry = entries[0];
         const { width, height } = entry.contentRect;
         if (width != 0 && height != 0) {
-            res.layout.siz[1].val = px(height);
+            //res.layout.siz[1].val = px(height);
+            res.layout.siz.change(([w,h]) => [w,px(height)]);
         }
     });
 
@@ -3282,4 +3286,4 @@ const screenSize = () => {
     return res;
 };
 
-export { Cond, EXPONENTIAL, Entry, External, ExternalPos, ExternalSiz, FLIP, Img, Inline, LINEAR, QUADRATIC, Rect, RectT, Supp, SuppT, Text, Tree, _border, _container, _externalBorder, _mapT, _pathT, _proportional, _seamlessBorder, _style, _walkT, addChans, addCoord, addLayoutTriggers, addLen, addNodes, addStyle, addSubNode, applyF, asPx, border, chan, cond, condElse, container, coord, copyCoord, copyLen, core, defaultLayoutReactivity, endTransaction, externalBorder, fitImg, fitText, flex, flexX, flexY, fromStruc, getPx, getRel, hashNode, horizontal, horizontalSpace, keyed, len, line, listen, listenOnce, listenRef, mapT, mulCoord, mulLen, node, nodeObj, paragraph, pathT, preserveR, preserveT, proportional, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, screenSize, scrollbar, seamlessBorder, space, splitCoord, startTransaction, stopTimed, style, subNode, subNode1, supp, timed, toInline, toLen, toNode, toStruc, top, tran, tranRef, transaction, tree, unsafeTran, unsafeTranRef, vertical, verticalSpace, walkT, withTree, x, y };
+export { Cond, EXPONENTIAL, Entry, External, ExternalPos, ExternalSiz, FLIP, Img, Inline, LINEAR, QUADRATIC, Rect, RectT, Supp, SuppT, Text, Tree, _border, _container, _externalBorder, _mapT, _pathT, _proportional, _seamlessBorder, _style, _walkT, addChans, addCoord, addLayoutTriggers, addLen, addNodes, addStyle, addSubNode, applyF, asPx, border, chan, cond, condElse, container, copyCoord, copyLen, core, defaultLayoutReactivity, endTransaction, externalBorder, fitImg, fitText, flex, flexX, flexY, fromStruc, getPx, getRel, hashNode, horizontal, horizontalSpace, keyed, len, line, listen, listenOnce, listenRef, mapT, mulCoord, mulLen, node, nodeObj, paragraph, pathT, preserveR, preserveT, proportional, px, removeEvents, removeListen, removeRect, removeTran, run, runDOM, runRect, runRectDOM, screenSize, scrollbar, seamlessBorder, space, splitCoord, startTransaction, stopTimed, style, subNode, subNode1, supp, timed, toInline, toLen, toNode, toStruc, top, tran, tranRef, transaction, tree, unsafeTran, unsafeTranRef, vertical, verticalSpace, walkT, withTree, x, y };
