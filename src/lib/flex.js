@@ -74,7 +74,8 @@ export const flexX = tree => {
         const entry = entries[0];
         const { width, height } = entry.contentRect;
         if (width != 0 && height != 0) {
-            res.layout.siz[0].val = px(width);
+            //res.layout.siz[0].val = px(width);
+            res.layout.siz.change(([w,h]) => [px(width),h]);
         }
     });
 
@@ -118,7 +119,8 @@ export const flexY = tree => {
         const entry = entries[0];
         const { width, height } = entry.contentRect;
         if (width != 0 && height != 0) {
-            res.layout.siz[1].val = px(height);
+            //res.layout.siz[1].val = px(height);
+            res.layout.siz.change(([w,h]) => [w,px(height)]);
         }
     });
 

@@ -1,5 +1,5 @@
 import { tran } from '../node.js';
-import { coord, addLen } from '../coord.js';
+import { addLen } from '../coord.js';
 import { Supp, preserveR } from '../rect.js';
 import { Tree } from '../tree.js';
 import { RectT } from '../rect-tree.js';

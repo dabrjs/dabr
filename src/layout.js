@@ -1,11 +1,11 @@
 import { vectorPlus } from './utils/index.js';
-import { coord, splitCoord } from './coord.js';
+import { splitCoord } from './coord.js';
 
 // Add render transitions related to layout (positioning)
 export const addLayoutTriggers = (layout, elem, rect, parLayout) => {
-    const sca = coord(parLayout.scale);
+    const sca = parLayout.scale;
 
-    const pos = coord(layout.pos);
+    const pos = layout.pos;
     const dPos = layout.disablePos;
     const posChanged = layout.posChanged;
     const posAbsRender = layout.enablePosAbs;
@@ -55,7 +55,7 @@ export const addLayoutTriggers = (layout, elem, rect, parLayout) => {
         }
     });
 
-    const siz = coord(layout.siz);
+    const siz = layout.siz;
     const dSiz = layout.disableSiz;
     const sizChanged = layout.sizChanged;
     const sizAbsRender = layout.enableSizAbs;
@@ -150,9 +150,7 @@ export const defaultLayoutReactivity = (
     // );
 
     rect.tran(
-        [posN, sizN, pScaleN, pPosAbsN, pSizAbsN, enPos, enSiz].map(
-            coord
-        ),
+        [posN, sizN, pScaleN, pPosAbsN, pSizAbsN, enPos, enSiz],
         (pos, siz, pScale, pPosAbs, pSizAbs) => {
             const [posRel, posPx] = splitCoord(pos);
             const [sizRel, sizPx] = splitCoord(siz);

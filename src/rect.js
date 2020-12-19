@@ -8,7 +8,7 @@ import {
 } from './utils/index.js';
 import { node, toNode, tranRef, unsafeTranRef } from './node.js';
 import { listenRef, listenOnce, chan } from './channel.js';
-import { coord } from './coord.js';
+//import { coord } from './coord.js';
 
 // Creates the staindard Rect interface, which is a standard set of
 // attrs transformations/functions can rely on. Doc:
@@ -52,11 +52,11 @@ import { coord } from './coord.js';
 //   layout.siz: relative size length. Obligatory in any rect.
 export const Rect = (def = {}) => {
     const defaultLayout = {
-        pos: coord([0, 0]),
-        siz: coord([100, 100]),
+        pos: [0, 0],
+        siz: [100, 100],
         posAbs: node(),
         sizAbs: node(),
-        scale: coord([1, 1]),
+        scale: [1, 1],
         disablePos: node(false),
         disableSiz: node(false),
         posChanged: chan(),

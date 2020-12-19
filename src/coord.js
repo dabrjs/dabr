@@ -44,15 +44,17 @@ export const copyCoord = ([x, y]) => [copyLen(x), copyLen(y)];
 
 export const copyLen = l => (l.rel ? copyObj(l) : l);
 
-export const x = l => coord([l, 100]);
+const dontCare = 100;
 
-export const y = l => coord([100, l]);
+export const x = l => [l, dontCare];
 
-export const coord = arg => {
-    const nd = arg.isNode ? arg : node(arg);
-    addSubNode(nd, '0');
-    addSubNode(nd, ['x', '0']);
-    addSubNode(nd, '1');
-    addSubNode(nd, ['y', '1']);
-    return nd;
-};
+export const y = l => [dontCare, l];
+
+// export const coord = arg => {
+//     const nd = arg.isNode ? arg : node(arg);
+//     addSubNode(nd, '0');
+//     addSubNode(nd, ['x', '0']);
+//     addSubNode(nd, '1');
+//     addSubNode(nd, ['y', '1']);
+//     return nd;
+// };
